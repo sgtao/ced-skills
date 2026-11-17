@@ -1,0 +1,17 @@
+{
+  "name": "ced-skills",
+  "owner": {
+    "name": "sgtao"
+  },
+  "metadata": {
+    "description": "解説コンテンツを作る Claude Code スキル集（url-to-md・pdf-to-md-ja・craft-explanation-docs・websearch-slide-ja と explain コマンド）"
+  },
+  "plugins": [
+    {
+      "name": "ced-skills",
+      "source": "./plugins/ced-skills",
+      "description": "任意のドキュメント・情報から、解説メモと解説スライドを作る",
+      "version": "0.1.0"
+    }
+  ]
+}

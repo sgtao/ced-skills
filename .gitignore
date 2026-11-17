@@ -1,0 +1,33 @@
+# Python（sync_skills.py・検査スクリプトの実行で出るもの）
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node（Playwright の撮影で入るもの）
+node_modules/
+package-lock.json.bak
+
+# 検査の一時出力・E2E の作業フォルダ（記録 tests/e2e-record/ は追跡する）
+test-results/
+.playwright-mcp/
+*.log
+*.tmp
+_to_delete/
+tests/e2e-work/
+
+# 元のスキルの配布物（複製していない。dist は 01_sources 側）
+dist/
+
+# OS とエディタ
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ローカル設定（共有する設定は .claude/settings.json）
+.claude/settings.local.json
+CLAUDE.local.md

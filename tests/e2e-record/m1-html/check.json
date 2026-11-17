@@ -1,0 +1,24 @@
+{
+  "criteria": {
+    "7_docs_folder": true,
+    "7_check_docs": true,
+    "7_slide_pair": true,
+    "8_lint_zero": true
+  },
+  "details": {
+    "check_docs_exit": 0,
+    "check_docs_out": "{\n  \"schema\": 1,\n  \"folder\": \"/private/tmp/claude-501/-Users-sgtao--claude-spares-spare-K2jEwt/6993e6f3-3506-40a3-b2de-f2d295643890/scratchpad/e2e/run1/out/explained\",\n  \"passed\": true,\n  \"summary\": {\n    \"pass\": 11,\n    \"fail\": 0\n  },\n  \"items\": [\n    {\n      \"id\": \"C-1\",\n      \"name\": \"必須ファイル\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-2\",\n      \"name\": \"見出し\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-3\",\n      \"name\": \"out/ への参照\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-4\",\n      \"name\": \"プレースホルダ\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-5\",\n      \"name\": \"相対リンク\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-6\",\n      \"name\": \"文字数\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-7\",\n      \"name\": \"セクションの網羅\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-8\",\n      \"name\": \"引用の照合\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-9\",\n      \"name\": \"入力の保全\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-10\",\n      \"name\": \"項目の一致\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    },\n    {\n      \"id\": \"C-11\",\n      \"name\": \"相互リンクと要約\",\n      \"status\": \"PASS\",\n      \"findings\": []\n    }\n  ]\n}\n",
+    "slide_pairs": [
+      [
+        "/private/tmp/claude-501/-Users-sgtao--claude-spares-spare-K2jEwt/6993e6f3-3506-40a3-b2de-f2d295643890/scratchpad/e2e/run1/out/claude-code-plugin-skills-slides.md",
+        "/private/tmp/claude-501/-Users-sgtao--claude-spares-spare-K2jEwt/6993e6f3-3506-40a3-b2de-f2d295643890/scratchpad/e2e/run1/out/claude-code-plugin-skills-slides.html"
+      ]
+    ],
+    "slide_orphans": [],
+    "lint": {
+      "error": 0,
+      "warn": 0,
+      "items": []
+    }
+  }
+}

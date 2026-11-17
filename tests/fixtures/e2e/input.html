@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>プラグインで配る Claude Code スキルの仕組み</title>
+</head>
+<body>
+<article>
+<h1>プラグインで配る Claude Code スキルの仕組み</h1>
+<p>Claude Code のスキルは、フォルダと SKILL.md の組で定義される。SKILL.md の先頭には name と description を書き、description に書いた言葉が含まれる依頼に対して、Claude がそのスキルを読み込む。</p>
+<h2>マーケットプレイスとプラグイン</h2>
+<p>プラグインは、複数のスキルやコマンドをまとめて配る単位である。リポジトリ直下の .claude-plugin/marketplace.json が、配布のための目録になる。プラグインの中身は plugins の下のフォルダに置き、.claude-plugin/plugin.json で名前と版を書く。</p>
+<p>利用者は、マーケットプレイスを追加し、プラグインを入れる。入れたプラグインは、スキルとコマンドを名前空間付きで使える。たとえば ced-skills プラグインのコマンドは /ced-skills:explain になる。</p>
+<h2>名前の衝突</h2>
+<p>同じ言葉で反応するスキルが複数あると、どれが読み込まれたかは分かりにくい。そのため、配布するスキルには接頭辞を付けて名前を区別することが勧められる。</p>
+<table>
+<tr><th>項目</th><th>役割</th></tr>
+<tr><td>SKILL.md</td><td>名前と説明、手順</td></tr>
+<tr><td>scripts/</td><td>決まった処理を行う補助スクリプト</td></tr>
+<tr><td>plugin.json</td><td>プラグインの名前と版</td></tr>
+</table>
+<h2>まとめ</h2>
+<p>スキルは、配布の単位（プラグイン）と、利用の単位（スキル・コマンド）を分けて考えると整理しやすい。</p>
+</article>
+</body>
+</html>
