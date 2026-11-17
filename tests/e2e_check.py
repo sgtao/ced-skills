@@ -58,8 +58,8 @@ def lint(md: Path):
     except json.JSONDecodeError:
         return None, out.stderr.strip() or out.stdout.strip()
     items = data.get("lint", [])
-    errors = sum(1 for i in items if i.get("severity") == "error")
-    warns = sum(1 for i in items if i.get("severity") == "warn")
+    errors = sum(1 for i in items if i.get("level") == "error")
+    warns = sum(1 for i in items if i.get("level") == "warn")
     return {"error": errors, "warn": warns, "items": items}, None
 
 
