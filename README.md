@@ -26,9 +26,12 @@ bash scripts/install.sh --scope user                          # ~/.claude/skills
 bash scripts/install.sh --scope project --project-dir <dir>   # <dir>/.claude/skills へ
 bash scripts/install.sh --dir <フォルダ>                      # 任意の配置先へ
 bash scripts/install.sh --scope user --dry-run                # 何も書かず、行う操作だけ表示
+bash scripts/install.sh --scope user -y                       # 確認の問いを省く
 ```
 
 対象は Claude Code だけです。`--list-targets` で配置先を確かめられます。
+
+**B で入れた場合、`/ced-skills:explain` は使えません**（コマンドは入らず、スキル 4 つだけが入ります）。代わりに [docs/instructions.md](docs/instructions.md) の「3. 自然文で頼む」の例文を Claude に渡してください。外すときは `bash scripts/install.sh --scope user --uninstall`（`ced-` の 4 つだけが消えます）。
 
 ## 使い方
 
@@ -69,7 +72,7 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | install.sh（3 つのスコープ、--uninstall、--dry-run） | `python3 tests/test_install.py` |
 | 元のテスト（11・12）を複製に向けて実行 | `bash tests/run_source_tests.sh`（外すものは `tests/source-exclusions.txt`） |
 | explain の質問の扱い | `python3 tests/check_explain.py --stream tests/e2e-record/m1-html/stream.jsonl` |
-| E2E（HTML 1 件）の出力 | `python3 tests/e2e_check.py <出力フォルダ>` |
+| E2E（HTML・PDF・YouTube の出力）の検査 | `python3 tests/e2e_check.py <出力フォルダ>` |
 
 E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
@@ -77,8 +80,13 @@ E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record
 
 - 対応は Claude Code だけです（Claude.ai 用の ZIP や Copilot などは、元のリポジトリの `install.sh` を使ってください）。
 - スクリプトは `uv run` で動きます（標準の `python3` が 3.10 より古いときも動くように）。
-- スライドの撮影（Playwright）と lint（`mdss-convert`）は、Node.js と `mdss-convert` が入っていることを前提にします。
+- スライドの撮影（Playwright）と lint（`mdss-convert`）は、Node.js と `mdss-convert` が入っていることを前提にします。入れ方はこの README では扱いません（`mdss-convert` と `uv` は、それぞれの公式の手順で入れてください）。
+- YouTube の字幕は、英語の自動字幕だと取れないことがあります（既知の不具合。下の「既知の問題」）。
+
+## 既知の問題
+- 英語の YouTube 動画で、字幕が取れずに概要欄だけで解説が作られることがあります。出力の中身を必ず確かめてください。
+- 出力フォルダの中に、中間ファイル（`out/` や `.work/`）が混ざることがあります。解説メモは `out/` の直下か `explained/` にできます。
 
 ## ライセンス
 
-元のスキルのライセンスに従います（各元リポジトリの LICENSE を確認してください）。
+このプラグインの `plugin.json` は MIT と書いています。複製したスキルの元のライセンスは、元のリポジトリごとに違います（`ced-url-to-md` の元には LICENSE がありません）。公開前に確かめてください。
