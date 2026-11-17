@@ -5,7 +5,7 @@
 
 ## 手順
 
-1. **機械の検査**（C-1〜C-11）:
+1. **機械の検査**（C-1〜C-12）:
    ```bash
    <RUN> <SKILL_DIR>/scripts/check_docs.py <作業フォルダ>
    ```
@@ -27,7 +27,7 @@
 - 作業フォルダ: <パス>（絶対パス）
 - 入力: <入力のパス>（絶対パス。プロファイル: <video|article|document>／内容の種類: <…>）
 - 作ったファイル: README.md・01_source.md・02_explanation_memo.md・11_question_and_answer.md・12_LLM_prompts_as_guide.md
-- 検査: C-1〜C-11 合格（<n> 回目）／読み合わせ R-1〜R-4 合格
+- 検査: C-1〜C-12 合格（<n> 回目）／読み合わせ R-1〜R-4 合格
 - 採った既定値: <聞かずに決めたこと>
 - 確認していないこと: <あれば>
 - 残った項目: <あれば。なければ「なし」>

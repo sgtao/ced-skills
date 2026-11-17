@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""check_docs.py — 作業フォルダの最終ファイル 5 本を検査する（C-1〜C-11）。標準ライブラリのみ。
+"""check_docs.py — 作業フォルダの最終ファイル 5 本を検査する（C-1〜C-12）。標準ライブラリのみ。
 
 検査は読むだけで、何も書き換えない（直すのは LLM。検査を通すために字数・期待値・
 検査の側を書き換えない）。項目の定義は references/output-formats.md の「検査項目」。
@@ -66,6 +66,7 @@ ITEMS = [
     ("C-9", "入力の保全"),
     ("C-10", "項目の一致"),
     ("C-11", "相互リンクと要約"),
+    ("C-12", "総括の視点"),
 ]
 
 
@@ -685,8 +686,42 @@ def c11(ctx: Ctx):
     return out
 
 
+# ---- C-12 --------------------------------------------------------------------------
+def c12(ctx: Ctx):
+    """README の「## 生成AIの総括」：横断分析の視点が子箇条書きで 3〜4 個ある。1 行に（2）を詰めない。一言まとめがある。"""
+    out = []
+    r = ctx.texts["README.md"]
+    if r is None:
+        return out  # 無いことは C-1 が報告する
+    secs, lines = sections_of(r)
+    hit = find(secs, 2, "生成AIの総括")
+    if not hit:
+        out.append(F("README.md", None, "「## 生成AIの総括」が無い"))
+        return out
+    body = sec_body(lines, hit[0]).split("\n")
+    idx = next((i for i, ln in enumerate(body) if ln.startswith("- 横断分析：")), None)
+    if idx is None:
+        out.append(F("README.md", hit[0].line, "「- 横断分析：」が無い"))
+        return out
+    if "（2）" in body[idx]:
+        out.append(F("README.md", hit[0].line, "横断分析が 1 行に（1）（2）と詰められている（視点ごとの子箇条書きにする）"))
+    kids = []
+    for ln in body[idx + 1:]:
+        if re.match(r"^\s+- \S", ln):
+            kids.append(ln)
+        elif ln.strip() == "":
+            continue
+        else:
+            break
+    if not 3 <= len(kids) <= 4:
+        out.append(F("README.md", hit[0].line, f"横断分析の視点が {len(kids)} 個（子箇条書きで 3〜4 個）"))
+    if not any(ln.startswith("- 一言まとめ：") for ln in body):
+        out.append(F("README.md", hit[0].line, "「- 一言まとめ：」が無い"))
+    return out
+
+
 CHECKS = {"C-1": c1, "C-2": c2, "C-3": c3, "C-4": c4, "C-5": c5, "C-6": c6,
-          "C-7": c7, "C-8": c8, "C-9": c9, "C-10": c10, "C-11": c11}
+          "C-7": c7, "C-8": c8, "C-9": c9, "C-10": c10, "C-11": c11, "C-12": c12}
 
 
 def run_checks(root: str, only=None) -> dict:
@@ -730,7 +765,7 @@ def main() -> None:
             "            11_question_and_answer.md・12_LLM_prompts_as_guide.md・out/00_manifest.json）\n"
             "検査項目: C-1 必須ファイル／C-2 見出し／C-3 out/ への参照／C-4 プレースホルダ／\n"
             "          C-5 相対リンク／C-6 文字数／C-7 セクションの網羅／C-8 引用の照合／\n"
-            "          C-9 入力の保全／C-10 項目の一致／C-11 相互リンクと要約\n"
+            "          C-9 入力の保全／C-10 項目の一致／C-11 相互リンクと要約／C-12 総括の視点\n"
             "（読み合わせの項目 R-1〜R-4 は LLM が行う。このスクリプトでは確かめない）"),
         epilog=contract_epilog(
             ("NO_INPUT", "CHECK_FAILED"),

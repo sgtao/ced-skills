@@ -152,8 +152,8 @@
           "replacements": 3
         },
         "references/output-formats.md": {
-          "orig_sha256": "a45bd703365e5290fb439d02fe89a8d9d2719a9b9aed4e25f3b5111327e4703f",
-          "out_sha256": "a45bd703365e5290fb439d02fe89a8d9d2719a9b9aed4e25f3b5111327e4703f",
+          "orig_sha256": "c4f120adcf804b93ab9f85ebd03ecd6a5b9dbcea82beb0a68f1d58896acb2c24",
+          "out_sha256": "c4f120adcf804b93ab9f85ebd03ecd6a5b9dbcea82beb0a68f1d58896acb2c24",
           "replacements": 0
         },
         "references/profiles/article.md": {
@@ -177,8 +177,8 @@
           "replacements": 0
         },
         "references/self-review.md": {
-          "orig_sha256": "76ddb1b4b188087ff4eab9a20dcb4eb1b909c1af5cd89071aadbae9b55e884ff",
-          "out_sha256": "76ddb1b4b188087ff4eab9a20dcb4eb1b909c1af5cd89071aadbae9b55e884ff",
+          "orig_sha256": "88fd781a3b979c0d4ca4bc765bdd0fe216190975ef335bb474ef1a684306cef6",
+          "out_sha256": "88fd781a3b979c0d4ca4bc765bdd0fe216190975ef335bb474ef1a684306cef6",
           "replacements": 0
         },
         "scripts/_common.py": {
@@ -192,8 +192,8 @@
           "replacements": 0
         },
         "scripts/check_docs.py": {
-          "orig_sha256": "27de37f24beacba43f6266f86d79aaa01c0f00e78a3fc4543fd82f5b9030f5bf",
-          "out_sha256": "27de37f24beacba43f6266f86d79aaa01c0f00e78a3fc4543fd82f5b9030f5bf",
+          "orig_sha256": "4e9e6cf34f1d01b69927cde3510dd171add5bbe8c37588dd1f7ad6839a25d70e",
+          "out_sha256": "4e9e6cf34f1d01b69927cde3510dd171add5bbe8c37588dd1f7ad6839a25d70e",
           "replacements": 0
         },
         "scripts/scaffold.py": {
@@ -202,8 +202,8 @@
           "replacements": 0
         },
         "workflows/analyze.md": {
-          "orig_sha256": "69629a7460fcfc958a799a0c545866765d4b000f8d62e6e89f6284ebdfe595a7",
-          "out_sha256": "69629a7460fcfc958a799a0c545866765d4b000f8d62e6e89f6284ebdfe595a7",
+          "orig_sha256": "8f4a0c10bbaf6bfb6cd2d433390e80d4787e040d31531fae6e089bb9705f455c",
+          "out_sha256": "8f4a0c10bbaf6bfb6cd2d433390e80d4787e040d31531fae6e089bb9705f455c",
           "replacements": 0
         },
         "workflows/assemble.md": {
@@ -222,8 +222,8 @@
           "replacements": 0
         },
         "workflows/review.md": {
-          "orig_sha256": "d2736f648b1a7865b2405f8ff982ddb6298159ca957461037d4867cbb309a8d2",
-          "out_sha256": "312ae55275aa82afa505cfb337a87b7c5064e4806e7eb28c02a49291958366e4",
+          "orig_sha256": "ae42eda4d0142d28948a2ad327ead326283b628bc1cde094d9fb56d110682fb4",
+          "out_sha256": "32d07eada3089fe151a692611dbf07cc7fafcbff6fc1130da9f74a4753e06666",
           "replacements": 1
         }
       },
