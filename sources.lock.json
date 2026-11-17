@@ -35,8 +35,8 @@
           "replacements": 0
         },
         "scripts/youtube_to_md.py": {
-          "orig_sha256": "1a03989f0443d874b3a6e832378c387aa4104e8511c4626384ac0805ca4a2278",
-          "out_sha256": "1a03989f0443d874b3a6e832378c387aa4104e8511c4626384ac0805ca4a2278",
+          "orig_sha256": "082c45d3148141a0c3235f678553e16317aaa7442841179182c0f6a109fad014",
+          "out_sha256": "082c45d3148141a0c3235f678553e16317aaa7442841179182c0f6a109fad014",
           "replacements": 0
         },
         "workflows/file.md": {

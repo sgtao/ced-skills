@@ -1,7 +1,7 @@
 ---
 description: URL・ファイル・YouTube から、解説メモと解説スライド（MD・HTML）を 1 度の指示で作る
 argument-hint: <URL または ファイルのパス> [--out <出力フォルダ>] [--slides <枚数>] [--audience <読み手>]
-allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
+allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, AskUserQuestion
 ---
 
 # /ced-skills:explain — 解説メモと解説スライドを作る

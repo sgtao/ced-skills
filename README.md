@@ -71,6 +71,7 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | 複製が元と一致する | `python3 scripts/sync_skills.py --check` |
 | install.sh（3 つのスコープ、--uninstall、--dry-run） | `python3 tests/test_install.py` |
 | 元のテスト（11・12）を複製に向けて実行 | `bash tests/run_source_tests.sh`（外すものは `tests/source-exclusions.txt`） |
+| YouTube の字幕の選択（地域付きの言語コード en-US を含む） | `python3 tests/test_caption_track.py` |
 | explain の質問の扱い | `python3 tests/check_explain.py --stream tests/e2e-record/m1-html/stream.jsonl` |
 | E2E（HTML・PDF・YouTube の出力）の検査 | `python3 tests/e2e_check.py <出力フォルダ>` |
 
@@ -89,4 +90,4 @@ E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record
 
 ## ライセンス
 
-このプラグインの `plugin.json` は MIT と書いています。複製したスキルの元のライセンスは、元のリポジトリごとに違います（`ced-url-to-md` の元には LICENSE がありません）。公開前に確かめてください。
+このプラグイン（`LICENSE`、MIT）は MIT です。複製したスキルの元のライセンスは、元のリポジトリごとに違います（`ced-url-to-md` の元のリポジトリには LICENSE ファイルがありません）。公開前に、複製したスキルの扱いを確かめてください。
