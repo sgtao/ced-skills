@@ -1,0 +1,5 @@
+# 元のテストを複製に向けて実行するときに外すもの。形式：<スイート>|<ファイル または nodeid>|<理由>
+# 外すのは、複製したスキルの中身ではなく、元のリポジトリの配布の仕組みや名前を確かめるものだけ。
+11|tests/test_install.py|元のリポジトリ直下の scripts/install.sh（複数ツール・ZIP・.gitattributes）を試すテスト。複製の対象はスキルのフォルダだけで、この install.sh は複製していない。配置は本リポジトリの install.sh（M2 の tests/test_install.py）で確かめる
+12|tests/test_install.py|11 と同じ。元のリポジトリ直下の scripts/install.sh を試すテストで、複製の対象ではない
+12|tests/test_skill_md.py::test_skill_md_frontmatter_name_and_description|名前の確かめ。SKILL.md の name は ced-craft-explanation-docs に置き換えるのが仕様（SPEC の名前の置き換え）。元の名前を期待するため、置き換え後は外す
