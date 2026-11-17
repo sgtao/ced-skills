@@ -33,10 +33,13 @@ def find_docs_folder(root: Path):
     return hits
 
 
-def find_slide_pairs(root: Path, docs_folder: Path):
+def find_slide_pairs(root: Path, docs_folder):
     pairs, orphans = [], []
     for md in sorted(root.rglob("*.md")):
-        if docs_folder in md.parents or md.name in FINAL_FILES or ".work" in md.parts:
+        # 解説メモの 5 本、作業フォルダ（00_manifest.json がある階層）と .work は、スライドではない
+        if md.name in FINAL_FILES or ".work" in md.parts:
+            continue
+        if any((anc / "00_manifest.json").exists() for anc in [md.parent, *md.parents] if root in [anc, *anc.parents]):
             continue
         if "/skills/" in str(md):
             continue
