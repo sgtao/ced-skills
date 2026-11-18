@@ -184,9 +184,11 @@ ced-skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── ced-url-to-md/  ced-pdf-to-md-ja/  ced-craft-explanation-docs/  ced-websearch-slide-ja/
 │   └── commands/explain.md             総合インストラクション
+├── adapters/ced-explain/SKILL.md       Claude Code 以外のツール向けの ced-explain（生成物。手で直さない）
 ├── docs/instructions.md                総合インストラクションの例（貼り付け用）
-├── scripts/install.sh                  スキルを skills フォルダへ直接入れる・外す
+├── scripts/install.sh                  スキルを、ツールごとの skills フォルダへ直接入れる・外す
 ├── scripts/sync_skills.py              元のリポジトリから複製し、名前を置き換える
+├── scripts/build_explain_skill.py      explain.md から adapters/ced-explain を生成する
 └── tests/                              合格条件の検査
 ```
 
@@ -218,13 +220,17 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | プラグインの検査（validate、警告 0） | `bash tests/check_plugin.sh` |
 | 一時の設定で入れて、5 つ（スキル 4・コマンド 1）が認識される | `bash tests/test_plugin_install.sh` |
 | 複製が元と一致する | `python3 scripts/sync_skills.py --check` |
-| install.sh（3 つのスコープ、--uninstall、--dry-run） | `python3 tests/test_install.py` |
+| install.sh（4 ツールと all、2 つのスコープ、--uninstall、--dry-run、ced-explain の配置） | `python3 tests/test_install.py` |
 | 元のテスト（11・12）を複製に向けて実行 | `bash tests/run_source_tests.sh`（外すものは `tests/source-exclusions.txt`） |
 | YouTube の字幕の選択（地域付きの言語コード en-US を含む） | `python3 tests/test_caption_track.py` |
-| explain の質問の扱い | `python3 tests/check_explain.py --stream tests/e2e-record/m1-html/stream.jsonl` |
+| explain の質問・出力の形・入力の決め方（静的検査。`--stream` で E2E の記録も見る） | `python3 tests/check_explain.py` と `python3 tests/test_check_explain.py` |
+| ced-explain が生成結果と一致し、禁止した語句が無い | `python3 tests/check_portable.py` と `python3 scripts/build_explain_skill.py --check` |
+| README に、古い字幕の注意が無く、入力の種類・対応表・構成が載っている | `python3 tests/check_readme.py` |
 | 出力の形（見本 2 つが合格、不合格の見本 3 つが不合格） | `python3 tests/test_check_output_layout.py` |
 | 実際の出力の形 | `python3 tests/check_output_layout.py <出力フォルダ>` |
 | E2E（HTML・PDF・YouTube の出力）の検査（形も含む） | `python3 tests/e2e_check.py <出力フォルダ>` |
+
+入力の前処理（`collect_sources.py`）の検査は、元のリポジトリ 11 の `tests/test_collect_sources.py` にあり、`run_source_tests.sh` が複製に向けて実行します。
 
 `sync_skills.py` と `run_source_tests.sh` は、元のリポジトリ（開発用の `01_sources`）が隣にあるときだけ動きます。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 

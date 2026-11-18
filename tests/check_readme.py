@@ -5,6 +5,7 @@
   stale   古い字幕の注意（英語の YouTube で字幕が取れない、という記述）が 0 件（M1）
   inputs  入力の種類の一覧がある（URL・PDF・Office・HTML・YouTube・テキスト・コード・フォルダ・ZIP）（M5）
   targets Claude Code と 4 ツールの対応表があり、「配置を検査済み」「実機で確認済み」の列がある（M7）
+  structure 開発者向けの「ファイル構成」と「テスト」の節が、実在する主なファイル・検査を載せている（M8 後の見直し）
 
 使い方: python3 tests/check_readme.py [--only stale[,inputs,targets]] [--readme <パス>]
 終了コード: 0＝合格、1＝不合格
@@ -15,7 +16,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-ITEMS = ("stale", "inputs", "targets")
+ITEMS = ("stale", "inputs", "targets", "structure")
 INPUT_KINDS = ("URL", "PDF", "Word", "Excel", "PowerPoint", "HTML", "YouTube", "テキスト", "コード", "フォルダ", "ZIP")
 TOOLS = ("Claude Code", "Codex", "Copilot", "Gemini CLI", "Antigravity")
 
@@ -59,7 +60,25 @@ def check_targets(text: str):
     return [f"対応表に載っていないツール: {', '.join(missing)}"] if missing else []
 
 
-CHECKS = {"stale": check_stale, "inputs": check_inputs, "targets": check_targets}
+# README の開発者向けの節に載せるもの（実在するものだけを書く。無ければ載せない）
+LISTED = [
+    "adapters/", "scripts/install.sh", "scripts/sync_skills.py", "scripts/build_explain_skill.py",
+    "tests/check_portable.py", "tests/check_readme.py", "tests/check_output_layout.py",
+    "tests/check_explain.py", "tests/test_install.py",
+]
+
+
+def check_structure(text: str):
+    out = []
+    for rel in LISTED:
+        if not (REPO / rel).exists():
+            out.append(f"{rel} が実在しない（LISTED を直す）")
+        elif rel not in text:
+            out.append(f"README に {rel} が載っていない")
+    return out
+
+
+CHECKS = {"stale": check_stale, "inputs": check_inputs, "targets": check_targets, "structure": check_structure}
 
 
 def main() -> int:
