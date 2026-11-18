@@ -2,8 +2,7 @@
 
 ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履歴です。版は `plugins/.claude-plugin/plugin.json` の `version` と、Git のタグに合わせます。
 
-スキルの中身（`plugins/ced-*`）は、元のリポジトリ（url-to-md、pdf-to-md-ja、craft-explanation-docs、websearch-slide-ja）から複製したものです。元の変更は、それぞれのリポジトリの CHANGELOG を見てください。複製がどの版かは `sources.lock.json` にあります。
-
+---
 ## [0.0.2] - 2026-11-19
 
 ### 追加
@@ -24,17 +23,7 @@ ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履�
 ### 修正
 - Python 3.10・3.11 で、`collect_sources.py` が構文エラーになる不具合（f 文字列の書き方）を直した。3.10 以上で動く
 
-### 確かめたこと
-- 合格条件 1〜5・8〜10 の機械検査（プラグインの検査、複製と元の一致、元のテスト、一時の設定での認識、`install.sh`、入力の前処理、出力の形、`ced-explain`、README）
-- 質問の数は、手順書の静的検査まで（条件 6）
-
-### 未検証（0.0.2 では確かめていない）
-- 対話での質問の数（手順書の H2〜H5）。最後の E2E（ZIP 2 件を入力にした実行。条件 7）
-- 実機の各ツール（Codex・Copilot CLI・Gemini CLI・Antigravity）で、スキルが認識されること。README の「実機で確認済み」は、すべて「未検証」
-- 再インストールの後に、再起動が要るか（H1）
-- 入力が HTML・YouTube のときの実出力は、0.0.1 の記録のまま
-- 独立した審査（reviewer）と仕込み検査
-
+---
 ## [0.0.1] - 2026-11-18
 
 初回のリリース。
@@ -49,3 +38,5 @@ ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履�
 ### 修正
 - 英語の YouTube の字幕を選べるようにした（地域付きの言語コード `en-US` などを、字幕のキーに合わせる）
 - 生成 AI の総括の視点を子箇条書きにし、検査 C-12 を足した
+
+---
