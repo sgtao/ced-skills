@@ -228,9 +228,23 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 
 `sync_skills.py` と `run_source_tests.sh` は、元のリポジトリ（開発用の `01_sources`）が隣にあるときだけ動きます。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
+## 対応ツール
+
+| ツール | 呼び方 | ユーザー単位の配置先（`--target`） | 配置を検査済み | 実機で確認済み |
+|---|---|---|---|---|
+| Claude Code | `/ced-skills:explain` | `~/.claude/skills`（プラグインで入れる） | ✓（プラグインの検査と `install.sh` のテスト） | 未検証（v0.0.2 の H1〜H5 で確かめる） |
+| Codex | `$ced-explain` | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
+| Copilot CLI | `/ced-explain`（`/skills reload` のあと） | `~/.copilot/skills`（`--target copilot`） | ✓（`install.sh` のテスト） | 未検証（H6） |
+| Gemini CLI | 説明文の依頼で選ばれる（新しいセッション） | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
+| Antigravity | `/ced-explain`（`/skills reload` のあと） | `~/.gemini/config/skills`（`--target antigravity`） | ✓（`install.sh` のテスト） | 未検証（H6） |
+
+- Claude Code では、ced-explain は入りません（コマンド `/ced-skills:explain` を使います）。ほかのツールには、スキルの `ced-explain` が入ります（生成元は `plugins/commands/explain.md`。`adapters/ced-explain/SKILL.md` は生成物で、手で直しません）。
+- Codex は、既定でネットワークが無効です。URL や YouTube を取る場合は、設定が要る見込みです。
+
 ## 対応と制限
 
-- 対応は Claude Code だけです（Claude.ai 用の ZIP や Copilot などは、元のリポジトリの `install.sh` を使ってください）。
+- 対応ツールは下の表のとおりです。Claude.ai 用の ZIP は対象外です。
+- 「配置を検査済み」は、一時の場所に入れて、配置先と中身をテストで確かめた状態です。「実機で確認済み」は、そのツールの画面で実際に認識されたことを確かめた状態です。確かめていないものは「未検証」と書いています。
 - スクリプトは `uv run` で動きます（標準の `python3` が 3.10 より古いときも動くように）。
 - スライドの撮影（Playwright）と lint（`mdss-convert`）は、Node.js が入っていることを前提にします（`mdss-convert` は `npx` で取得）。
 - `tests/e2e-record/` の記録は、構成を変える前（`plugins/ced-skills` を指す時点）のものです。

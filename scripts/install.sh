@@ -92,7 +92,7 @@ dests_for() {
 
 # 指定のツール（all は 3 つ）の配置先を、重ならないように並べる
 resolve_dests() {
-  local tools d out=""
+  local tools d out="" t
   case "$TARGET" in
     all) tools="claude agents antigravity" ;;
     *)   tools="$TARGET" ;;
@@ -103,10 +103,9 @@ resolve_dests() {
       case "
 ${out}
 " in
-        *"
-${d}
-"*) ;;             # 同じ場所は 1 回だけ
-        *) out="${out}${d}
+        *"	${d}
+"*) ;;             # 同じ場所は 1 回だけ（最初のツールで入れる）
+        *) out="${out}${t}	${d}
 " ;;
       esac
     done <<EOT
@@ -151,21 +150,33 @@ fi
 
 # 配置先を決める（--dir があれば 1 か所だけ）
 if [ -n "$DEST_OVERRIDE" ]; then
-  DESTS="${DEST_OVERRIDE}
+  DESTS="${TARGET}	${DEST_OVERRIDE}
 "
 else
   DESTS="$(resolve_dests)"
 fi
+# 配置先だけの一覧（1 行 1 つ。ツールは DESTS の先頭の列）
+DEST_LIST="$(printf '%s' "$DESTS" | cut -f2)"
 
 in_dests() {
   case "
-${DESTS}
+${DEST_LIST}
 " in
     *"
 $1
 "*) return 0 ;;
   esac
   return 1
+}
+
+# ツールごとのスキル。ced-explain は Claude Code 以外に入れる（claude は、プラグインで入るので入れない）
+skills_for() {
+  if [ "$1" = "claude" ]; then echo "$SKILLS"; else echo "$SKILLS ced-explain"; fi
+}
+
+# スキルの複製元。ced-explain は adapters/ の生成物、ほかは plugins/ の複製
+source_of() {
+  if [ "$1" = "ced-explain" ]; then echo "${REPO}/adapters/ced-explain"; else echo "${SRC}/$1"; fi
 }
 
 has_ced() {
@@ -197,9 +208,9 @@ while IFS= read -r d; do
   [ -n "$d" ] || continue
   echo "配置先: ${d}"
 done <<EOT
-${DESTS}
+${DEST_LIST}
 EOT
-for s in $SKILLS; do
+for s in $(printf '%s\n' "$DESTS" | while IFS="	" read -r t _; do skills_for "$t"; done | tr ' ' '\n' | awk '!seen[$0]++'); do
   if [ "$MODE" = "install" ]; then
     echo "  入れる: ${s}"
   else
@@ -230,19 +241,23 @@ if [ "$MODE" = "install" ]; then
   for s in $SKILLS; do
     [ -f "${SRC}/${s}/SKILL.md" ] || die "複製元が見つからない: ${SRC}/${s}（sync_skills.py を先に実行）"
   done
+  # ced-explain は claude 以外にだけ入るので、そのツールがある配置先のときだけ確かめる
+  if printf '%s' "$DESTS" | cut -f1 | grep -qv '^claude$' && [ ! -f "${REPO}/adapters/ced-explain/SKILL.md" ]; then
+    die "ced-explain が無い: adapters/ced-explain（python3 scripts/build_explain_skill.py で作る）"
+  fi
 fi
 
-while IFS= read -r DEST; do
+while IFS="	" read -r TOOL DEST; do
   [ -n "$DEST" ] || continue
   if [ "$MODE" = "install" ]; then
     run mkdir -p "$DEST"
-    for s in $SKILLS; do
+    for s in $(skills_for "$TOOL"); do
       run rm -rf "${DEST}/${s}"
-      run cp -R "${SRC}/${s}" "${DEST}/${s}"
+      run cp -R "$(source_of "$s")" "${DEST}/${s}"
       [ "$DRY_RUN" -eq 1 ] || echo "[OK] 入れました: ${s} → ${DEST}"
     done
   else
-    for s in $SKILLS; do
+    for s in $(skills_for "$TOOL"); do
       if [ -e "${DEST}/${s}" ]; then
         run rm -rf "${DEST}/${s}"
         [ "$DRY_RUN" -eq 1 ] || echo "[OK] 消しました: ${s} ← ${DEST}"

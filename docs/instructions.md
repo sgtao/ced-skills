@@ -38,6 +38,19 @@
 スライドは 8 枚、読み手は実務で使う人です。
 ```
 
+## 5. Claude Code 以外のツール（ced-explain）
+
+`install.sh` で、`--target agents`・`copilot`・`antigravity` のいずれかに入れると、`ced-explain` が使えます。呼び方は、ツールごとに違います。
+
+| ツール | 呼び方 |
+|---|---|
+| Codex | `$ced-explain <URL または ファイルのパス>` |
+| Copilot CLI | `/skills reload` のあと、`/ced-explain <URL または ファイルのパス>` |
+| Antigravity | `/skills reload` のあと、`/ced-explain <URL または ファイルのパス>` |
+| Gemini CLI | 新しいセッションで、「次の資料から解説メモとスライドを作って：<URL または ファイルのパス>」のように頼む |
+
+質問の仕方は、ツールの選択式の質問の手段に合わせます。手段が無いときは、番号付きの選択肢が本文に出るので、番号か答えを返してください。
+
 ## 注意
 
 - YouTube の字幕が取れないときは、その理由が報告されます。別の動画に差し替える場合は、新しい URL で再実行してください。

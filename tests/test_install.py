@@ -320,5 +320,86 @@ class MultiTargetTest(unittest.TestCase):
         self.assertEqual(snapshot(self.home) + snapshot(self.proj), before)
 
 
+# ---- v0.0.2 M7：ced-explain は claude 以外に入り、claude には入らない ---------------------
+class ExplainSkillTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="ced-explain-"))
+        self.home = self.tmp / "home"
+        self.home.mkdir()
+        self.env = {k: v for k, v in os.environ.items() if k != "CLAUDE_SKILLS_DIR"}
+        self.env["HOME"] = str(self.home)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_install(self, *args):
+        return subprocess.run(["bash", str(INSTALL), *args], cwd=self.tmp, env=self.env,
+                              input="", capture_output=True, text=True, timeout=120)
+
+    def test_claude_user_does_not_get_ced_explain(self):
+        r = self.run_install("--target", "claude", "--scope", "user", "-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse((self.home / ".claude/skills/ced-explain").exists())
+        self.assertEqual(sorted(n for n in CED if (self.home / ".claude/skills" / n / "SKILL.md").exists()), sorted(CED))
+
+    def test_other_targets_get_ced_explain_and_the_four(self):
+        cases = [("agents", "user", ".agents/skills"), ("copilot", "user", ".copilot/skills"),
+                 ("antigravity", "user", ".gemini/config/skills"), ("agents", "project", None)]
+        for target, scope, rel in cases:
+            with self.subTest(target=target, scope=scope):
+                args = ["--target", target, "--scope", scope, "-y"]
+                if scope == "project":
+                    args += ["--project-dir", str(self.tmp)]
+                    rel = ".agents/skills" if target == "agents" else rel
+                r = self.run_install(*args)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                d = (self.home if scope == "user" else self.tmp) / rel
+                self.assertTrue((d / "ced-explain" / "SKILL.md").is_file(), str(d))
+                self.assertEqual(sorted(n for n in CED if (d / n / "SKILL.md").is_file()), sorted(CED))
+
+    def test_all_user_puts_explain_only_outside_claude(self):
+        r = self.run_install("--target", "all", "--scope", "user", "-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse((self.home / ".claude/skills/ced-explain").exists())
+        self.assertTrue((self.home / ".agents/skills/ced-explain/SKILL.md").is_file())
+        self.assertTrue((self.home / ".gemini/config/skills/ced-explain/SKILL.md").is_file())
+
+    def test_claude_install_does_not_need_the_generated_adapter(self):
+        """claude は ced-explain を使わないので、生成物（adapters/）が無くても入る。"""
+        copy = self.tmp / "copy"
+        (copy / "scripts").mkdir(parents=True)
+        (copy / "plugins").mkdir()
+        shutil.copy(INSTALL, copy / "scripts" / "install.sh")
+        for name in CED:
+            shutil.copytree(REPO / "plugins" / name, copy / "plugins" / name)
+        r = subprocess.run(["bash", str(copy / "scripts" / "install.sh"), "--target", "claude", "--scope", "user", "-y"],
+                           cwd=self.tmp, env=self.env, input="", capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(n for n in CED if (self.home / ".claude/skills" / n / "SKILL.md").exists()), sorted(CED))
+
+    def test_non_claude_install_stops_without_the_adapter(self):
+        copy = self.tmp / "copy"
+        (copy / "scripts").mkdir(parents=True)
+        (copy / "plugins").mkdir()
+        shutil.copy(INSTALL, copy / "scripts" / "install.sh")
+        for name in CED:
+            shutil.copytree(REPO / "plugins" / name, copy / "plugins" / name)
+        r = subprocess.run(["bash", str(copy / "scripts" / "install.sh"), "--target", "agents", "--scope", "user", "-y"],
+                           cwd=self.tmp, env=self.env, input="", capture_output=True, text=True, timeout=120)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("ced-explain", r.stderr)
+        self.assertFalse((self.home / ".agents/skills").exists(), "止まるときは何も入れない")
+
+    def test_uninstall_removes_ced_explain_outside_claude(self):
+        self.assertEqual(self.run_install("--target", "copilot", "--scope", "user", "-y").returncode, 0)
+        d = self.home / ".copilot/skills"
+        (d / "other-skill").mkdir()
+        (d / "other-skill" / "SKILL.md").write_text("---\nname: other-skill\n---\n", encoding="utf-8")
+        r = self.run_install("--target", "copilot", "--scope", "user", "--uninstall", "-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse((d / "ced-explain").exists())
+        self.assertTrue((d / "other-skill" / "SKILL.md").is_file())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
