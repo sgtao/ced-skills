@@ -120,6 +120,25 @@ def quiet_pass_checks(text: str):
     return problems
 
 
+def layout_checks(text: str):
+    """explain.md が、出力の形（PLAN.md 4.8）を決めているか。形そのものの検査は check_output_layout.py。"""
+    problems = []
+    tree = re.search(r"```\n<出力先>/\n.*?```", text, re.S)
+    if not tree:
+        return ["出力の形の図（<出力先>/ から始まる図）が無い"]
+    for k in ("explained/", "<入力の名前>-slides.md", "<入力の名前>-slides.html", ".work/"):
+        if k not in tree.group(0):
+            problems.append(f"出力の形の図に「{k}」が無い")
+    if "固定" not in text:
+        problems.append("出力の形を固定する記述（「固定」）が無い")
+    for m in re.finditer(r"\./explain-out(?!/<入力の名前>)", text):
+        problems.append(f"出力先の既定が入力の名前を含まない: {text[m.start():m.start() + 20]!r}")
+    steps = section_of(text, "2.") or ""
+    if ".work/md/" not in steps:
+        problems.append("手順 2：変換した Markdown を .work/md/ に置く記述が無い")
+    return problems
+
+
 def slide_mode_checks():
     """ced-websearch-slide-ja（元のリポジトリ 13 の複製）に、確定値モードの決まりがあるか。"""
     problems = []
@@ -205,6 +224,7 @@ def main() -> int:
     problems, nq = static_checks(EXPLAIN.read_text(encoding="utf-8"))
     problems += quiet_pass_checks(EXPLAIN.read_text(encoding="utf-8"))
     problems += slide_mode_checks()
+    problems += layout_checks(EXPLAIN.read_text(encoding="utf-8"))
     print(f"質問の数（定義）: {nq}（4 問以内）")
     for p in problems:
         print("FAIL:", p)

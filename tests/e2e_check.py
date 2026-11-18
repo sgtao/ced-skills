@@ -5,9 +5,10 @@
    12_LLM_prompts_as_guide.md）が、craft-explanation-docs の check_docs.py に合格する。
    スライドの .md と .html が 1 組ある。
 8. スライド MD を mdss-convert --json-only にかけ、lint の error 0・warn 0。
+9. 出力の形が固定の形に合う（v0.0.2。tests/check_output_layout.py。--skip-layout で外せる）。
 
 使い方:
-  python3 tests/e2e_check.py <E2E の出力フォルダ> [--json]
+  python3 tests/e2e_check.py <E2E の出力フォルダ> [--json] [--skip-layout]
 終了コード: 0＝合格、1＝不合格、2＝出力が見つからない。
 """
 import argparse
@@ -17,6 +18,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_output_layout import check_layout  # noqa: E402
 CHECK_DOCS = (REPO / "plugins/ced-craft-explanation-docs/scripts/check_docs.py")
 FINAL_FILES = [
     "README.md",
@@ -70,6 +73,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("out", type=Path, help="E2E の出力フォルダ")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--skip-layout", action="store_true", help="出力の形の検査を外す（v0.0.1 の記録用）")
     args = ap.parse_args()
     report = {"criteria": {}, "details": {}}
     root = args.out
@@ -109,12 +113,19 @@ def main() -> int:
     else:
         report["criteria"]["8_lint_zero"] = False
 
+    if not args.skip_layout:
+        problems = check_layout(root)
+        report["criteria"]["9_layout"] = not problems
+        report["details"]["layout_problems"] = problems
+
     ok = all(report["criteria"].values())
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
         for k, v in report["criteria"].items():
             print(f"{'PASS' if v else 'FAIL'}  {k}")
+        for p in report["details"].get("layout_problems", []):
+            print(f"      形: {p}")
         if "lint" in report["details"]:
             print(f"lint: error={report['details']['lint']['error']} warn={report['details']['lint']['warn']}")
         print("PASS: E2E 7・8" if ok else "FAIL: E2E 7・8")

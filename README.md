@@ -25,14 +25,15 @@ URL・PDF・Word／Excel／PowerPoint・YouTube の動画から、**解説メモ
 ```
 入力（URL・PDF・動画など）
       ↓  /ced-skills:explain
-出力（出力先のフォルダ。例：./explain-out/）
-  ├── explained/   解説メモ 5 つ
+出力（出力先のフォルダ。例：./explain-out/<入力の名前>/）
+  ├── explained/           解説メモ 5 つ
   │     README.md／01_source.md／02_explanation_memo.md／11_question_and_answer.md／12_LLM_prompts_as_guide.md
-  ├── <名前>.md    解説スライド（編集用）
-  └── <名前>.html  解説スライド（ブラウザで開く）
+  ├── <名前>-slides.md     解説スライド（編集用）
+  ├── <名前>-slides.html   解説スライド（ブラウザで開く）
+  └── .work/               変換した Markdown などの中間ファイル（使わなくてよい）
 ```
 
-解説メモのフォルダの名前は、入力によって変わることがあります。終わりの報告に、作ったファイルのパスが出ます。
+出力の形は、いつも同じです（解説メモは必ず `explained/` に入ります）。`<名前>` は、入力のファイル名（拡張子なし）や YouTube の動画 ID です。終わりの報告に、作ったファイルのパスが出ます。入力を 2 件以上まとめて渡したときの形は、`00_index.md`（一覧）と、入力ごとのフォルダになります。
 
 | 出力 | 中身 |
 |---|---|
@@ -108,7 +109,7 @@ bash scripts/install.sh --scope user --uninstall              # ced- の 4 つ�
 
 | 聞かれること | 既定の答え |
 |---|---|
-| 出力先のフォルダ | `./explain-out` |
+| 出力先のフォルダ | `./explain-out/<入力の名前>` |
 | スライドの枚数 | 6 枚 |
 | 読み手 | 初めて読む人 |
 
@@ -135,7 +136,7 @@ bash scripts/install.sh --scope user --uninstall              # ced- の 4 つ�
 ### 3. 使うときの注意
 
 - YouTube 動画は、字幕（日本語・英語。自動生成を含む）から解説を作ります。字幕が無い動画では、字幕が取れなかった理由が報告されます。その場合は、別の動画に差し替えて、もう一度実行してください。
-- 出力先に、作業用の中間ファイル（`out/` や `.work/`）が混ざることがあります。解説メモの 5 つとスライドだけを使えば足ります。
+- 作業用の中間ファイルは `.work/` と `explained/out/` にまとまっています。解説メモの 5 つとスライドだけを使えば足ります。
 - 入力を Markdown にできなかったときは、理由を報告して止まります。
 - スライドの `.md` や `.html` は、同じ名前のものがあると上書きされることがあります。残したいものは、先に別のフォルダへ移してください。
 
@@ -192,7 +193,9 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | 元のテスト（11・12）を複製に向けて実行 | `bash tests/run_source_tests.sh`（外すものは `tests/source-exclusions.txt`） |
 | YouTube の字幕の選択（地域付きの言語コード en-US を含む） | `python3 tests/test_caption_track.py` |
 | explain の質問の扱い | `python3 tests/check_explain.py --stream tests/e2e-record/m1-html/stream.jsonl` |
-| E2E（HTML・PDF・YouTube の出力）の検査 | `python3 tests/e2e_check.py <出力フォルダ>` |
+| 出力の形（見本 2 つが合格、不合格の見本 3 つが不合格） | `python3 tests/test_check_output_layout.py` |
+| 実際の出力の形 | `python3 tests/check_output_layout.py <出力フォルダ>` |
+| E2E（HTML・PDF・YouTube の出力）の検査（形も含む） | `python3 tests/e2e_check.py <出力フォルダ>` |
 
 `sync_skills.py` と `run_source_tests.sh` は、元のリポジトリ（開発用の `01_sources`）が隣にあるときだけ動きます。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
