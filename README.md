@@ -44,6 +44,22 @@ URL・PDF・Word／Excel／PowerPoint・YouTube の動画から、**解説メモ
 | `README.md` | 上の 4 つの案内 |
 | スライド（`.md`・`.html`） | ブラウザで開けるスライド。`.md` は編集用 |
 
+## 入力の種類
+
+| 入力 | 例 | 作り方 |
+|---|---|---|
+| URL | `https://example.com/article` | Web ページを Markdown にする |
+| PDF | `report.pdf` | 表と図を保って Markdown にする |
+| Word・Excel・PowerPoint | `.docx`・`.xlsx`・`.pptx` | Markdown にする（旧形式の `.doc`・`.xls`・`.ppt` は LibreOffice が必要） |
+| HTML | `page.html` | 本文を取り出して Markdown にする |
+| YouTube | `https://www.youtube.com/watch?v=…` | 字幕（自動生成を含む）から作る |
+| テキスト | `.txt`・`.csv`・字幕 `.vtt`・`.srt` など | Markdown に包む（字幕は時刻つきの本文にする） |
+| コード | `.py`・`.js`・`.json` など | 言語名つきのコードブロックに包む |
+| フォルダ | `./01_source/` | 中のファイルを 1 件ずつ処理する（秘密情報・隠しファイル・管理用のフォルダは読まない） |
+| ZIP | `materials.zip` | 安全を確かめてから展開し、中のファイルを 1 件ずつ処理する |
+
+入力が 2 件以上のときは、出力先に一覧（`00_index.md`）と、入力ごとのフォルダができます。上限（既定 5 件）を超えるときは、全件か先頭の上限までかを聞かれます（`--max-files` で変えられます）。質問を出さない実行（3 つの指定をすべて渡す）で上限を超えるときは、何も作らずに止まります。
+
 ## 必要なもの
 
 | もの | 用途 | 必須か |
@@ -112,6 +128,7 @@ bash scripts/install.sh --scope user --uninstall              # ced- の 4 つ�
 | 出力先のフォルダ | `./explain-out/<入力の名前>` |
 | スライドの枚数 | 6 枚 |
 | 読み手 | 初めて読む人 |
+| 入力の確認（未完了が 2 件以上、または参照元が 2 つあるとき） | 全件（上限の 5 件を超えるときは先頭 5 件だけ） |
 
 答えると、変換 → 解説メモ → スライドの順に進み、最後に作ったファイルのパスが報告されます。
 

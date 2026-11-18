@@ -40,7 +40,8 @@ def table_rows(text: str):
 
 
 def check_inputs(text: str):
-    m = re.search(r"^#{2,3} .*入力.*$(.*?)(?=^#{1,3} |\Z)", text, re.M | re.S)
+    # 見出しの行は 1 行に限る（DOTALL の .* が改行をまたいで、別の見出しに当たらないように）
+    m = re.search(r"^#{2,3} [^\n]*入力[^\n]*$(.*?)(?=^#{1,3} |\Z)", text, re.M | re.S)
     if not m:
         return ["入力の種類の一覧の節（「入力」を含む見出し）が無い"]
     body = m.group(1)

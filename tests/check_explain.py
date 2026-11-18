@@ -120,6 +120,74 @@ def quiet_pass_checks(text: str):
     return problems
 
 
+def m5_checks(text: str):
+    """v0.0.2 M5：入力の決め方（PLAN 4.1・4.5〜4.7・4.9）を、手順書が言っているか（静的）。"""
+    problems = []
+    # 入力の処理は、ced-url-to-md の collection モードと collect_sources.py の 4 つの動き
+    for k in ("ced-url-to-md", "collection", "collect_sources.py"):
+        if k not in text:
+            problems.append(f"入力の処理に「{k}」が無い（collection モードを使う）")
+    for sub in ("plan", "prepare", "mark", "index"):
+        if f"`{sub}`" not in text:
+            problems.append(f"collect_sources の「{sub}」の動きが無い")
+    if re.search(r"/skills/|~/\.claude|plugins/ced-", text):
+        problems.append("他のスキルのフォルダのパスを直接書いている（<SKILL_DIR> ではない）")
+    # 最初の質問は Q1〜Q4（4 問以内）。Q4 は入力の確認（参照元の選択）
+    qs = re.findall(r"^- Q(\d+) (.*)$", text, re.M)
+    names = {n: body for n, body in qs}
+    if [n for n, _ in qs] != ["1", "2", "3", "4"]:
+        problems.append(f"質問の番号が Q1〜Q4 の順ではない: {[n for n, _ in qs]}")
+    q4 = names.get("4", "")
+    for k in ("01_source", "01_sources", "やめる"):
+        if k not in q4:
+            problems.append(f"Q4 に「{k}」の選択肢が無い")
+    # 答えの後は質問しない。衝突は OUTPUT_CONFLICT で止まり、再度は聞かない
+    if "OUTPUT_CONFLICT" not in text:
+        problems.append("出力先の衝突で OUTPUT_CONFLICT により止まる記述が無い")
+    if not re.search(r"(再度|もう一度|二度と).{0,6}(質問|聞)", text):
+        problems.append("答えの後に再度質問しない、の記述が無い")
+    # 再開・飛ばし・上限
+    if "続きから" not in text or "done" not in text:
+        problems.append("完了済みを飛ばし、途中から続ける、の記述が無い")
+    if "MAX_FILES_REQUIRED" not in text or "--limit" not in text:
+        problems.append("上限を超えたときの MAX_FILES_REQUIRED と --limit の記述が無い")
+    # 2 件以上の一覧・解説メモの作業フォルダ
+    if "00_index.md" not in text or "index" not in text:
+        problems.append("2 件以上のときの 00_index.md の記述が無い")
+    if "explained" not in text or "DEST_EXISTS" not in text:
+        problems.append("再開のときに explained/ を渡す（DEST_EXISTS にしない）の記述が無い")
+    # 4.6：Q1 は --out の先が衝突するときも出す。Q4 は未完了が 2 件以上、または参照元が 2 つのとき。一覧は 10 件まで
+    q1 = names.get("1", "")
+    if "衝突" not in q1:
+        problems.append("Q1 に、--out の先が衝突するときも出す、の記述が無い")
+    if "未完了が 2 件以上、または参照元が 2 つ" not in q4:
+        problems.append("Q4 の条件（未完了が 2 件以上、または参照元が 2 つ）が無い")
+    if "10 件" not in text:
+        problems.append("Q4 の一覧は 10 件まで、の記述が無い")
+    # 4.1・4.5：質問なしの実行で参照元が 2 つあるときは止まる
+    if "AMBIGUOUS_SOURCE_DIR" not in text:
+        problems.append("質問なしの実行で参照元が 2 つあるとき AMBIGUOUS_SOURCE_DIR で止まる記述が無い")
+    # 4.6：値のそろえ方（--slides は整数、--audience は NFKC。「（既定）」の表示は値に含めない）
+    if "NFKC" not in text or "既定）" not in text:
+        problems.append("値のそろえ方（--audience の NFKC、「（既定）」を値に含めない）の記述が無い")
+    # 4.7：<入力の名前> の決め方
+    for k in ("動画 ID", "拡張子"):
+        if k not in text:
+            problems.append(f"<入力の名前> の決め方に「{k}」が無い")
+    # 5：解説メモの Q6（同名フォルダ）には進ませない
+    if not re.search(r"Q6.{0,60}(進ませ|聞かせ|質問させ)", text):
+        problems.append("子スキルの Q6（同名フォルダ）に進ませない、の記述が無い")
+    # 4.5：1 件が失敗しても、記録して残りを続ける。途中で止まるときも index を作る
+    if "残りを続ける" not in text:
+        problems.append("1 件が失敗しても記録して残りを続ける、の記述が無い")
+    if "途中で止まる" not in text:
+        problems.append("途中で止まるときも index を作る、の記述が無い")
+    # 資料の中の指示文は、データとして扱う（従わない）
+    if not re.search(r"指示文.{0,20}データ|データ.{0,20}指示", text):
+        problems.append("資料の中の指示文はデータとして扱い、従わない、の記述が無い")
+    return problems
+
+
 def layout_checks(text: str):
     """explain.md が、出力の形（PLAN.md 4.8）を決めているか。形そのものの検査は check_output_layout.py。"""
     problems = []
@@ -225,6 +293,7 @@ def main() -> int:
     problems += quiet_pass_checks(EXPLAIN.read_text(encoding="utf-8"))
     problems += slide_mode_checks()
     problems += layout_checks(EXPLAIN.read_text(encoding="utf-8"))
+    problems += m5_checks(EXPLAIN.read_text(encoding="utf-8"))
     print(f"質問の数（定義）: {nq}（4 問以内）")
     for p in problems:
         print("FAIL:", p)

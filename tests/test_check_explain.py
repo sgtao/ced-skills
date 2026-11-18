@@ -60,5 +60,39 @@ class StaticNegativeTest(unittest.TestCase):
         self.assertTrue(ce.quiet_pass_checks(self.GOOD.replace("保存先", "")))
 
 
+class M5StaticTest(unittest.TestCase):
+    """v0.0.2 M5：入力の決め方の検査。現在の explain.md は合格し、規則を欠いた文は不合格になる。"""
+
+    def test_current_explain_passes(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8")
+        self.assertEqual(ce.m5_checks(text), [])
+
+    def test_text_without_collection_fails(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8").replace("collect_sources.py", "x.py")
+        self.assertTrue(any("collect_sources.py" in p for p in ce.m5_checks(text)))
+
+    def test_missing_q4_fails(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8")
+        text = "\n".join(l for l in text.split("\n") if not l.startswith("- Q4 "))
+        self.assertTrue(any("Q1〜Q4" in p for p in ce.m5_checks(text)))
+
+    def test_other_skill_path_fails(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8") + "\n参照: plugins/ced-url-to-md/scripts/x.py\n"
+        self.assertTrue(any("他のスキル" in p for p in ce.m5_checks(text)))
+
+    def test_each_cross_check_rule_is_enforced(self):
+        """計画との突き合わせで足した決まり（衝突時の Q1、Q4 の条件、参照元が 2 つの停止、値のそろえ方、Q6、継続）。"""
+        base = ce.EXPLAIN.read_text(encoding="utf-8")
+        cases = {"AMBIGUOUS_SOURCE_DIR": "AMBIGUOUS_SOURCE_DIR", "NFKC": "NFKC", "残りを続ける": "残りを続ける",
+                 "未完了が 2 件以上、または参照元が 2 つ": "Q4 の条件", "動画 ID": "動画 ID"}
+        for needle, expect in cases.items():
+            probs = ce.m5_checks(base.replace(needle, "＿＿"))
+            self.assertTrue(any(expect in p for p in probs), needle)
+
+    def test_missing_injection_rule_fails(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8").replace("データとして扱い", "従わせる")
+        self.assertTrue(any("指示文" in p for p in ce.m5_checks(text)))
+
+
 if __name__ == "__main__":
     unittest.main()
