@@ -75,8 +75,13 @@ URL・PDF・Word／Excel／PowerPoint・YouTube の動画から、**解説メモ
 
 Claude Code を開き、次の 2 行を順に入力します（`/plugin` で始まる行は、Claude Code の入力欄に打つコマンドです）。
 
+- カタログの登録
 ```
 /plugin marketplace add sgtao/ced-skills
+```
+
+- プラグインのインストール
+```
 /plugin install ced-skills@ced-skills
 ```
 
@@ -86,6 +91,61 @@ Claude Code を開き、次の 2 行を順に入力します（`/plugin` で始�
 入ったかどうかは、`/ced-skills:explain` と入力して候補に出れば確認できます。候補に出ないときは、`/plugin` で `ced-skills` が入っているか（有効か）を見て、それでも出なければ Claude Code を開き直してください。
 
 手元にクローンしたフォルダから入れるときは、1 行目の `sgtao/ced-skills` を、そのフォルダのパスに替えてください。
+
+### ツールごとの入れ方（Claude Code 以外）
+
+入れ方は、ツールごとに違います。**4 つのスキル（`ced-url-to-md` など）は、どのツールにも同じものが入ります。** 違うのは、入れるコマンドと、「1 度の指示で解説メモとスライドを作る」入口が入るかどうかです。
+
+- Claude Code：コマンド `/ced-skills:explain`（プラグインに入っています）
+- そのほかのツール：スキル `ced-explain`（`install.sh` か、下の Gemini CLI の `--path adapters` で入ります）
+
+「確認の状態」の読み方：**公式の文書で確認** は、コマンドの書き方を、そのツールの公式の文書で読んだ状態です（確認日 2026-11-19）。ced-skills そのものを、そのツールの実機で動かして確かめた、という意味ではありません。実機で動かしたものは、まだありません（対応ツールの表の「実機で確認済み」を見てください）。
+
+| ツール | 入れ方（おすすめ） | 入るもの | 確認の状態 |
+|---|---|---|---|
+| Claude Code | プラグイン（上の 2 行） | 4 スキル＋コマンド | 検査済み（`plugin validate`・一時の設定での認識） |
+| Copilot CLI | マーケットプレイス（下） | 4 スキル。コマンドは入らない見込み | コマンドは公式の文書で確認。ced-skills では未検証 |
+| Gemini CLI | `gemini skills install`（下） | 4 スキル（`--path plugins`）、`ced-explain`（`--path adapters`） | コマンドは公式の文書で確認。ced-skills では未検証 |
+| Codex | `install.sh --target agents` | 4 スキル＋`ced-explain` | 配置を検査済み。実機は未検証 |
+| Antigravity | `install.sh --target antigravity` | 4 スキル＋`ced-explain` | 配置と再読み込みの方法は公式の文書で確認。実機は未検証 |
+
+**Copilot CLI**（マーケットプレイスから入れる）
+
+```
+copilot plugin marketplace add sgtao/ced-skills
+copilot plugin install ced-skills@ced-skills
+```
+
+Copilot CLI は、マーケットプレイスの設定を `.claude-plugin/marketplace.json` からも読みます（公式の文書）。ただしプラグインの `commands` は、Copilot では既定で読まれないので、`/ced-skills:explain` は使えない見込みです。`ced-explain` も入れたいときは、次のコマンドを使います（入れた後は、新しいセッションを開きます）。
+
+```bash
+bash scripts/install.sh --target copilot --scope user
+```
+
+**Gemini CLI**（Git のリポジトリから入れる）
+
+```
+gemini skills install https://github.com/sgtao/ced-skills.git --path plugins
+gemini skills install https://github.com/sgtao/ced-skills.git --path adapters
+```
+
+1 つ目で 4 スキル、2 つ目で `ced-explain` が入ります。`--scope workspace` を付けると、今のプロジェクトだけに入ります。入れた後は、新しいセッションを開くか、`/skills reload` を入力します。クローンしたフォルダから入れるときは `bash scripts/install.sh --target agents --scope user` でも同じ場所（`~/.agents/skills`）に入ります。
+
+**Codex**
+
+```bash
+bash scripts/install.sh --target agents --scope user
+```
+
+`~/.agents/skills` に入ります。Codex には `codex plugin marketplace add` というコマンドがありますが、ced-skills の `.claude-plugin/` の形式を、Codex の CLI が読むかどうかは、公式の文書から読み取れませんでした（未確認）。そのため、`install.sh` をおすすめします。表示されないときは、Codex を再起動します。呼び方は `$ced-explain` です。
+
+**Antigravity**
+
+```bash
+bash scripts/install.sh --target antigravity --scope user
+```
+
+`~/.gemini/config/skills` に入ります（プロジェクトだけなら `--scope project` で `.agents/skills`）。入れた後は、`/skills reload` を入力します。`agy plugin install https://github.com/sgtao/ced-skills` は、リポジトリの直下に `plugin.json` がある場合の方法で、このリポジトリのプラグインは `plugins/` の下にあるため、この方法では入りません。
 
 ### プラグインを使わずに入れる（上級者向け）
 
@@ -241,7 +301,7 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | Claude Code | `/ced-skills:explain` | `~/.claude/skills`（プラグインで入れる） | ✓（プラグインの検査と `install.sh` のテスト） | 未検証（v0.0.2 の H1〜H5 で確かめる） |
 | Codex | `$ced-explain` | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
 | Copilot CLI | `/ced-explain`（`/skills reload` のあと） | `~/.copilot/skills`（`--target copilot`） | ✓（`install.sh` のテスト） | 未検証（H6） |
-| Gemini CLI | 説明文の依頼で選ばれる（新しいセッション） | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
+| Gemini CLI | 説明文の依頼で選ばれる（新しいセッションか `/skills reload` のあと） | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
 | Antigravity | `/ced-explain`（`/skills reload` のあと） | `~/.gemini/config/skills`（`--target antigravity`） | ✓（`install.sh` のテスト） | 未検証（H6） |
 
 - Claude Code では、ced-explain は入りません（コマンド `/ced-skills:explain` を使います）。ほかのツールには、スキルの `ced-explain` が入ります（生成元は `plugins/commands/explain.md`。`adapters/ced-explain/SKILL.md` は生成物で、手で直しません）。

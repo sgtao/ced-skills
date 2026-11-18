@@ -1,6 +1,6 @@
 {
   "name": "ced-skills",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "任意のドキュメント・情報から、解説メモと解説スライドを作る（url-to-md・pdf-to-md-ja・craft-explanation-docs・websearch-slide-ja を 1 度の指示で連携させる）",
   "author": {
     "name": "sgtao"

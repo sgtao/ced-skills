@@ -47,7 +47,7 @@
 | Codex | `$ced-explain <URL または ファイルのパス>` |
 | Copilot CLI | `/skills reload` のあと、`/ced-explain <URL または ファイルのパス>` |
 | Antigravity | `/skills reload` のあと、`/ced-explain <URL または ファイルのパス>` |
-| Gemini CLI | 新しいセッションで、「次の資料から解説メモとスライドを作って：<URL または ファイルのパス>」のように頼む |
+| Gemini CLI | 新しいセッション（または `/skills reload` のあと）で、「次の資料から解説メモとスライドを作って：<URL または ファイルのパス>」のように頼む |
 
 質問の仕方は、ツールの選択式の質問の手段に合わせます。手段が無いときは、番号付きの選択肢が本文に出るので、番号か答えを返してください。
 

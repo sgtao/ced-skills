@@ -6,6 +6,7 @@
   inputs  入力の種類の一覧がある（URL・PDF・Office・HTML・YouTube・テキスト・コード・フォルダ・ZIP）（M5）
   targets Claude Code と 4 ツールの対応表があり、「配置を検査済み」「実機で確認済み」の列がある（M7）
   structure 開発者向けの「ファイル構成」と「テスト」の節が、実在する主なファイル・検査を載せている（M8 後の見直し）
+  install   ツールごとのインストール方法（Claude Code・Copilot CLI・Codex・Gemini CLI・Antigravity）が、確認の状態つきで載っている
 
 使い方: python3 tests/check_readme.py [--only stale[,inputs,targets]] [--readme <パス>]
 終了コード: 0＝合格、1＝不合格
@@ -16,7 +17,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-ITEMS = ("stale", "inputs", "targets", "structure")
+ITEMS = ("stale", "inputs", "targets", "structure", "install")
 INPUT_KINDS = ("URL", "PDF", "Word", "Excel", "PowerPoint", "HTML", "YouTube", "テキスト", "コード", "フォルダ", "ZIP")
 TOOLS = ("Claude Code", "Codex", "Copilot", "Gemini CLI", "Antigravity")
 
@@ -78,7 +79,39 @@ def check_structure(text: str):
     return out
 
 
-CHECKS = {"stale": check_stale, "inputs": check_inputs, "targets": check_targets, "structure": check_structure}
+# ツールごとのインストール方法として、README に載せるコマンド（公式の文書で確かめた書き方。確認日は README に書く）
+INSTALL_COMMANDS = [
+    "/plugin marketplace add sgtao/ced-skills",
+    "copilot plugin marketplace add sgtao/ced-skills",
+    "copilot plugin install ced-skills@ced-skills",
+    "gemini skills install https://github.com/sgtao/ced-skills.git --path plugins",
+    "gemini skills install https://github.com/sgtao/ced-skills.git --path adapters",
+    "install.sh --target agents",
+    "install.sh --target antigravity",
+]
+
+
+def check_install(text: str):
+    out = []
+    m = re.search(r"^#{2,3} [^\n]*ツール[^\n]*入れ[^\n]*$(.*?)(?=^#{1,3} |\Z)", text, re.M | re.S)
+    if not m:
+        return ["ツールごとのインストール方法の節（「ツール」と「入れ」を含む見出し）が無い"]
+    body = m.group(1)
+    for tool in TOOLS:
+        if tool not in body:
+            out.append(f"インストールの節に {tool} が載っていない")
+    for cmd in INSTALL_COMMANDS:
+        if cmd not in text:
+            out.append(f"README に {cmd} が載っていない")
+    if "確認の状態" not in body:
+        out.append("インストールの節に「確認の状態」の列が無い")
+    if "確認日" not in body:
+        out.append("インストールの節に「確認日」が無い")
+    return out
+
+
+CHECKS = {"stale": check_stale, "inputs": check_inputs, "targets": check_targets, "structure": check_structure,
+          "install": check_install}
 
 
 def main() -> int:
