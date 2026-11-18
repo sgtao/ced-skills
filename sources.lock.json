@@ -233,8 +233,8 @@
       "source": "13_dev-skill-websearch-slide-ja/websearch-slide-ja",
       "files": {
         "SKILL.md": {
-          "orig_sha256": "5e15034673b0001c964ea7e8c63b1e26f90253ddef8d94252301240cf5570e53",
-          "out_sha256": "530099c2f1051e1ca5ca3f8a1c4f932c6612f239bea8de28481e7f2b648a64db",
+          "orig_sha256": "53681049c53282456e70610be78b5ff571fd8b8d9f1146927f2e86247a17b620",
+          "out_sha256": "2d87edb40a399aabbd850b26e2300c4d77ab58056e70041d3b073a7fef62d7ab",
           "replacements": 2
         },
         "assets/base-template.html": {
@@ -458,8 +458,8 @@
           "replacements": 0
         },
         "references/self-review.md": {
-          "orig_sha256": "7abecb9b67285115a81bb1cccc84269af936d64fdc9c9680c5725766888b3b33",
-          "out_sha256": "7abecb9b67285115a81bb1cccc84269af936d64fdc9c9680c5725766888b3b33",
+          "orig_sha256": "51edbc2b35f459f0de34015e3b17db6da59eeb22ddea445308ac8daff561f5d4",
+          "out_sha256": "51edbc2b35f459f0de34015e3b17db6da59eeb22ddea445308ac8daff561f5d4",
           "replacements": 0
         },
         "references/slide-layouts.md": {
@@ -473,13 +473,13 @@
           "replacements": 0
         },
         "references/usage-guide.md": {
-          "orig_sha256": "74a57a5ef203b80abe04fdae194640392adb8d50524989f863b99255f8c46e09",
-          "out_sha256": "5d8248832bb40e02c965426c1f648115c03d5b7f1c7550cb47c17a1604616d76",
+          "orig_sha256": "ab101a08a2ea7337260782992fc921eeedf89e106cfa8a381897883d7c1dd64f",
+          "out_sha256": "aa796d77c7ed8836e7fc9c95ec4c53274ba162c6990bed41fd166dc4232c5b46",
           "replacements": 2
         },
         "workflows/build.md": {
-          "orig_sha256": "4fbb6fc4fb7307a5fbd6e2df34206e41dcf4f30b327e9b6aac5063c77d0f96cb",
-          "out_sha256": "4fbb6fc4fb7307a5fbd6e2df34206e41dcf4f30b327e9b6aac5063c77d0f96cb",
+          "orig_sha256": "3ccd53bd104a516fa03fae94b83d3fdbd7a2b24c573078a4aa9a824a2a6c7eb6",
+          "out_sha256": "3ccd53bd104a516fa03fae94b83d3fdbd7a2b24c573078a4aa9a824a2a6c7eb6",
           "replacements": 0
         },
         "workflows/convert-md.md": {
@@ -488,13 +488,13 @@
           "replacements": 0
         },
         "workflows/convert-raw.md": {
-          "orig_sha256": "b7eaba192e2fd60befaecc0a98f5802027a0d4e64c184332135ef06aab81df56",
-          "out_sha256": "b7eaba192e2fd60befaecc0a98f5802027a0d4e64c184332135ef06aab81df56",
+          "orig_sha256": "396bc75cab70f6a990855843417a5382a12a08280cfc79ac84c5529f97823965",
+          "out_sha256": "396bc75cab70f6a990855843417a5382a12a08280cfc79ac84c5529f97823965",
           "replacements": 0
         },
         "workflows/create.md": {
-          "orig_sha256": "bd469d5bf969f9b5ea67f1486c0e94f134eaf3b11b77391d8dd5c58c3eb6c911",
-          "out_sha256": "1f65b8ab9559348c09fc50519a53e34c294742a810b3b14bfdac76a01e117acf",
+          "orig_sha256": "65ade03d3ba46c9f6ff9650bdab79b6f443e584aaa813b8a5d1e52ebfb70175e",
+          "out_sha256": "8459d5c359e045cdbc6a4b6ca14748e1a938a56faefdf530f7d0deb087d15400",
           "replacements": 1
         },
         "workflows/edit.md": {
