@@ -1,14 +1,149 @@
 # ced-skills
 
-任意のドキュメント・情報（URL・PDF・ファイル・YouTube）から、**解説メモ**と**解説スライド**（MD・HTML）を 1 度の指示で作る Claude Code のプラグインです。
+## Craft Explanation Docs Skills
+URL・PDF・Word／Excel／PowerPoint・YouTube の動画から、**解説メモ**と**解説スライド**を、Claude Code への 1 回の指示で作るプラグインです。
 
-同梱するもの:
-- スキル 4 つ（名前に `ced-` を付けた複製。中身は元のスキルと同じ）
-  - `ced-url-to-md`：URL・ファイル・YouTube を Markdown にする
-  - `ced-pdf-to-md-ja`：PDF を、表と図を保った Markdown にする
-  - `ced-craft-explanation-docs`：Markdown から、解説メモ一式（5 本）を作る
-  - `ced-websearch-slide-ja`：解説をスライド（MD・HTML）にする
-- コマンド 1 つ：`/ced-skills:explain`（4 スキルを連携させる手順）
+> **ced** は **C**raft **E**xplanation **D**ocs（解説の資料を作る）の頭文字です。
+
+- Craft：手をかけて作る
+- Explanation：解説（読んだ人が内容を理解できるようにする説明）
+- Docs：資料（Documents）
+
+このプラグインに入っているスキルは、どれも「解説の資料を作る」仕事の一部を受け持ちます。そのため、スキルの名前には `ced-` を付けています。同じ働きの元のスキル（`url-to-md` など）を別に入れていても、名前で見分けられるようにするためでもあります。
+
+| スキル | 受け持つこと |
+|---|---|
+| `ced-url-to-md` | URL・ファイル・YouTube を Markdown（見出しや表を書ける軽い文書の形式）にする |
+| `ced-pdf-to-md-ja` | PDF を、表と図を保ったまま Markdown にする |
+| `ced-craft-explanation-docs` | Markdown から、解説メモ一式（5 つのファイル）を作る |
+| `ced-websearch-slide-ja` | 解説をスライド（Markdown と HTML）にする |
+
+この 4 つを順に呼ぶ手順を 1 つのコマンド `/ced-skills:explain` にまとめてあります。**ふだん使うのはこのコマンドだけ**です。
+
+## 何ができるか
+
+```
+入力（URL・PDF・動画など）
+      ↓  /ced-skills:explain
+出力（出力先のフォルダ。例：./explain-out/）
+  ├── explained/   解説メモ 5 つ
+  │     README.md／01_source.md／02_explanation_memo.md／11_question_and_answer.md／12_LLM_prompts_as_guide.md
+  ├── <名前>.md    解説スライド（編集用）
+  └── <名前>.html  解説スライド（ブラウザで開く）
+```
+
+解説メモのフォルダの名前は、入力によって変わることがあります。終わりの報告に、作ったファイルのパスが出ます。
+
+| 出力 | 中身 |
+|---|---|
+| `01_source.md` | 入力を Markdown にしたもの（元の本文は変えない） |
+| `02_explanation_memo.md` | 解説メモ（内容の整理と解説） |
+| `11_question_and_answer.md` | 内容を確かめる FAQ（よくある質問と答え） |
+| `12_LLM_prompts_as_guide.md` | 続きを AI に聞くためのプロンプト（質問の雛形）集 |
+| `README.md` | 上の 4 つの案内 |
+| スライド（`.md`・`.html`） | ブラウザで開けるスライド。`.md` は編集用 |
+
+## 必要なもの
+
+| もの | 用途 | 必須か |
+|---|---|---|
+| [Claude Code](https://claude.com/claude-code) | このプラグインの実行 | 必須 |
+| [uv](https://docs.astral.sh/uv/) | スキルの Python スクリプトの実行 | 必須 |
+| Node.js（`npx` が使える版） | スライドの文法の検査（lint）と HTML の作成に使う `mdss-convert` を、`npx` が自動で取ってくる | スライドを作るときに必要 |
+| Playwright | 作ったスライドを撮影して、見た目を確かめる | 任意（無ければ撮影を飛ばす） |
+
+`uv` と Node.js は、それぞれの公式の手順で入れてください。`mdss-convert` は、自分で入れなくても `npx` が取ってきます。使えないときは、簡易な作り方に切り替わります。
+
+## インストール
+
+Claude Code を開き、次の 2 行を順に入力します（`/plugin` で始まる行は、Claude Code の入力欄に打つコマンドです）。
+
+```
+/plugin marketplace add sgtao/ced-skills
+/plugin install ced-skills@ced-skills
+```
+
+- 1 行目：このリポジトリ（GitHub の `sgtao/ced-skills`）を、プラグインの配布元（marketplace）として登録する
+- 2 行目：その中の `ced-skills` プラグインを入れる
+
+入ったかどうかは、`/ced-skills:explain` と入力して候補に出れば確認できます。候補に出ないときは、`/plugin` で `ced-skills` が入っているか（有効か）を見て、それでも出なければ Claude Code を開き直してください。
+
+手元にクローンしたフォルダから入れるときは、1 行目の `sgtao/ced-skills` を、そのフォルダのパスに替えてください。
+
+### プラグインを使わずに入れる（上級者向け）
+
+プラグインが使えない環境では、スキルのフォルダへ直接コピーできます。
+
+```bash
+git clone https://github.com/sgtao/ced-skills.git
+cd ced-skills
+bash scripts/install.sh --scope user    # ~/.claude/skills へ入れる
+```
+
+その他の指定：
+
+```bash
+bash scripts/install.sh --scope project --project-dir <dir>   # <dir>/.claude/skills へ
+bash scripts/install.sh --dir <フォルダ>                      # 任意の配置先へ
+bash scripts/install.sh --scope user --dry-run                # 何も書かず、行う操作だけ表示
+bash scripts/install.sh --scope user -y                       # 確認の問いを省く
+bash scripts/install.sh --scope user --uninstall              # ced- の 4 つだけ外す
+```
+
+この方法では、**`/ced-skills:explain` は使えません**（コマンドは入らず、スキル 4 つだけが入ります）。代わりに [docs/instructions.md](docs/instructions.md) の「3. 自然文で頼む」の例文を Claude に渡してください。
+
+## 使い方
+
+### 1. まず 1 回、動かしてみる
+
+```
+/ced-skills:explain https://example.com/article
+```
+
+`https://example.com/article` の部分は、解説したい URL か、手元のファイルのパス（例：`./report.pdf`。Claude Code を開いたフォルダが基準）に替えます。YouTube の URL も使えます。
+
+1 件で数分かかり、Claude の利用枠（API なら費用）を使います。記録した例では、HTML の記事 1 件で約 4.5 分、約 50 ターンでした。
+
+すると、足りない情報だけが、**最初にまとめて**聞かれます。
+
+| 聞かれること | 既定の答え |
+|---|---|
+| 出力先のフォルダ | `./explain-out` |
+| スライドの枚数 | 6 枚 |
+| 読み手 | 初めて読む人 |
+
+答えると、変換 → 解説メモ → スライドの順に進み、最後に作ったファイルのパスが報告されます。
+
+出力先に、前回の解説メモのフォルダが残っているときは、「続きから／別の名前で／やめる」のどれにするかを追加で聞かれます（上書きはされません）。
+
+### 2. 質問を出さずに一気に動かす
+
+答えを最初から渡すと、質問は出ません。
+
+```
+/ced-skills:explain ./report.pdf --out ./explain-out --slides 8 --audience 実務で使う人
+```
+
+| 指定 | 意味 |
+|---|---|
+| `--out <フォルダ>` | 出力先 |
+| `--slides <枚数>` | スライドの枚数 |
+| `--audience <読み手>` | 読み手の想定（例：`初めて読む人`／`実務で使う人`／`専門家`） |
+
+貼り付け用の例は [docs/instructions.md](docs/instructions.md) にあります。
+
+### 3. 使うときの注意
+
+- 英語の YouTube 動画では、字幕が取れず、概要欄だけで解説が作られることがあります。作られた内容を必ず確かめてください。
+- 出力先に、作業用の中間ファイル（`out/` や `.work/`）が混ざることがあります。解説メモの 5 つとスライドだけを使えば足ります。
+- 入力を Markdown にできなかったときは、理由を報告して止まります。
+- スライドの `.md` や `.html` は、同じ名前のものがあると上書きされることがあります。残したいものは、先に別のフォルダへ移してください。
+
+---
+
+# 開発者向け
+
+ここから先は、このリポジトリを直したり、テストしたりする人向けの説明です。使うだけなら読まなくて構いません。
 
 ## ファイル構成
 
@@ -19,41 +154,11 @@ ced-skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── ced-url-to-md/  ced-pdf-to-md-ja/  ced-craft-explanation-docs/  ced-websearch-slide-ja/
 │   └── commands/explain.md             総合インストラクション
-├── docs/instructions.md
-├── scripts/install.sh  scripts/sync_skills.py
-└── tests/
+├── docs/instructions.md                総合インストラクションの例（貼り付け用）
+├── scripts/install.sh                  スキルを skills フォルダへ直接入れる・外す
+├── scripts/sync_skills.py              元のリポジトリから複製し、名前を置き換える
+└── tests/                              合格条件の検査
 ```
-
-## 入れ方
-
-### A. プラグインとして入れる（推奨）
-
-```
-/plugin marketplace add <このリポジトリのパス または GitHub の owner/repo>
-/plugin install ced-skills@ced-skills
-```
-
-### B. スキルのフォルダへ直接入れる（プラグインを使わない）
-
-```bash
-bash scripts/install.sh --scope user                          # ~/.claude/skills へ
-bash scripts/install.sh --scope project --project-dir <dir>   # <dir>/.claude/skills へ
-bash scripts/install.sh --dir <フォルダ>                      # 任意の配置先へ
-bash scripts/install.sh --scope user --dry-run                # 何も書かず、行う操作だけ表示
-bash scripts/install.sh --scope user -y                       # 確認の問いを省く
-```
-
-対象は Claude Code だけです。`--list-targets` で配置先を確かめられます。
-
-**B で入れた場合、`/ced-skills:explain` は使えません**（コマンドは入らず、スキル 4 つだけが入ります）。代わりに [docs/instructions.md](docs/instructions.md) の「3. 自然文で頼む」の例文を Claude に渡してください。外すときは `bash scripts/install.sh --scope user --uninstall`（`ced-` の 4 つだけが消えます）。
-
-## 使い方
-
-```
-/ced-skills:explain <URL または ファイルのパス> [--out <フォルダ>] [--slides <枚数>] [--audience <読み手>]
-```
-
-足りない答えだけ、1 回にまとめて聞かれます。例と詳しい使い方は [docs/instructions.md](docs/instructions.md) にあります。
 
 ## 既存の同名スキルを外す（重なりを避けるとき）
 
@@ -66,7 +171,7 @@ bash scripts/install.sh --scope user -y                       # 確認の問い�
 
 ## 複製と更新
 
-スキルは `01_sources` の元のリポジトリから複製しています（`scripts/sync_skills.py`）。
+スキルは元のリポジトリ（開発用の `01_sources`）から複製しています（`scripts/sync_skills.py`）。この GitHub のリポジトリだけを取得した場合、`01_sources` は無いので、この操作はできません。
 
 ```bash
 python3 scripts/sync_skills.py            # 元から複製し直す（ced- を付ける）
@@ -89,19 +194,15 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | explain の質問の扱い | `python3 tests/check_explain.py --stream tests/e2e-record/m1-html/stream.jsonl` |
 | E2E（HTML・PDF・YouTube の出力）の検査 | `python3 tests/e2e_check.py <出力フォルダ>` |
 
-E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
+`sync_skills.py` と `run_source_tests.sh` は、元のリポジトリ（開発用の `01_sources`）が隣にあるときだけ動きます。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
 ## 対応と制限
 
 - 対応は Claude Code だけです（Claude.ai 用の ZIP や Copilot などは、元のリポジトリの `install.sh` を使ってください）。
 - スクリプトは `uv run` で動きます（標準の `python3` が 3.10 より古いときも動くように）。
-- スライドの撮影（Playwright）と lint（`mdss-convert`）は、Node.js と `mdss-convert` が入っていることを前提にします。入れ方はこの README では扱いません（`mdss-convert` と `uv` は、それぞれの公式の手順で入れてください）。
-- YouTube の字幕は、英語の自動字幕だと取れないことがあります（既知の不具合。下の「既知の問題」）。
-
-## 既知の問題
-- 英語の YouTube 動画で、字幕が取れずに概要欄だけで解説が作られることがあります。出力の中身を必ず確かめてください。
-- 出力フォルダの中に、中間ファイル（`out/` や `.work/`）が混ざることがあります。解説メモは `out/` の直下か `explained/` にできます。
+- スライドの撮影（Playwright）と lint（`mdss-convert`）は、Node.js が入っていることを前提にします（`mdss-convert` は `npx` で取得）。
+- `tests/e2e-record/` の記録は、構成を変える前（`plugins/ced-skills` を指す時点）のものです。
 
 ## ライセンス
 
-このプラグイン（`LICENSE`、MIT）は MIT です。複製したスキルの元のライセンスは、元のリポジトリごとに違います（`ced-url-to-md` の元のリポジトリには LICENSE ファイルがありません）。公開前に、複製したスキルの扱いを確かめてください。
+このリポジトリは MIT（`LICENSE`）です。複製したスキルの元のライセンスは、元のリポジトリごとに違い、`ced-url-to-md` の元のリポジトリには LICENSE ファイルがありません。再配布するときは、複製したスキルの扱いを確かめてください。
