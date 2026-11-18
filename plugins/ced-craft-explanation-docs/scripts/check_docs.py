@@ -28,12 +28,12 @@ FINAL_FILES = [
     "12_LLM_prompts_as_guide.md",
 ]
 MANIFEST = "out/00_manifest.json"
-NAV1 = "###### [toTopPage](../README.md)"
+NAV1 = "###### [toTopPage](./README.md)"
 NAV2 = "###### [toREADME](./README.md)"
 SEP = ("-----", "[toTop](#totoppage)")
 
 # 見出しの名前と順序（references/output-formats.md の §2）
-README_H2 = ["セクション", "概要", "生成AIの総括", "本文", "解説メモ", "FAQ", "Proposed Prompts"]
+README_H2 = ["セクション", "概要", "生成AIの総括", "本文", "解説メモ", "FAQ", "LLM 用プロンプト"]
 MEMO_H3 = ["1. 要約", "2. 例え話", "3. セクション別の解説", "4. ユースケース", "5. 理解を深める質問"]
 THEME_H3 = ["背景", "キー概念", "詳細解説", "注意点・限界", "ポイントまとめ", "確認の質問"]
 PROMPT_H2 = ["システムプロンプト", "活用例：サンプル質問"]
@@ -43,7 +43,7 @@ H1_PREFIX = {
     "01_source.md": "本文：",
     "02_explanation_memo.md": "解説メモ：",
     "11_question_and_answer.md": "FAQ：",
-    "12_LLM_prompts_as_guide.md": "Proposed Prompts：",
+    "12_LLM_prompts_as_guide.md": "LLM 用プロンプト：",
 }
 
 # 文字数の上限（§5-1）
@@ -394,7 +394,7 @@ def c5(ctx: Ctx):
         lines = normalize_text(text).split("\n")
         flags = fence_flags(lines)
         for i, ln in enumerate(lines):
-            if flags[i] or i == 0:  # 1 行目の toTopPage は対象外
+            if flags[i]:  # 1 行目の toTopPage も、飛び先（./README.md）を確かめる（C-5）
                 continue
             ln2 = re.sub(r"`[^`]*`", "", ln)
             for m in _LINK.finditer(ln2):

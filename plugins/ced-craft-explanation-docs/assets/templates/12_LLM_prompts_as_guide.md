@@ -1,6 +1,6 @@
-###### [toTopPage](../README.md)
+###### [toTopPage](./README.md)
 ###### [toREADME](./README.md)
-# Proposed Prompts：{{title}}
+# LLM 用プロンプト：{{title}}
 {{meta_bullets}}
 
 -----

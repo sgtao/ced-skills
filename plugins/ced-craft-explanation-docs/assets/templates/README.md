@@ -1,4 +1,4 @@
-###### [toTopPage](../README.md)
+###### [toTopPage](./README.md)
 ###### [toREADME](./README.md)
 # 資料：{{title}}
 {{meta_bullets}}
@@ -35,7 +35,7 @@
 
 -----
 [toTop](#totoppage)
-## Proposed Prompts
+## LLM 用プロンプト
 - [12_LLM_prompts_as_guide.md](./12_LLM_prompts_as_guide.md)
 
 -----

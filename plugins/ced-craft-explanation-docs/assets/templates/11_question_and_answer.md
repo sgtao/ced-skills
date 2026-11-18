@@ -1,4 +1,4 @@
-###### [toTopPage](../README.md)
+###### [toTopPage](./README.md)
 ###### [toREADME](./README.md)
 # FAQ：{{title}}
 {{meta_bullets}}
