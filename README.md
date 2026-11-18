@@ -245,6 +245,7 @@ ced-skills/
 │   ├── ced-url-to-md/  ced-pdf-to-md-ja/  ced-craft-explanation-docs/  ced-websearch-slide-ja/
 │   └── commands/explain.md             総合インストラクション
 ├── adapters/ced-explain/SKILL.md       Claude Code 以外のツール向けの ced-explain（生成物。手で直さない）
+├── CHANGELOG.md                        変更履歴（版ごとの追加・変更・修正と、未検証のこと）
 ├── docs/instructions.md                総合インストラクションの例（貼り付け用）
 ├── scripts/install.sh                  スキルを、ツールごとの skills フォルダへ直接入れる・外す
 ├── scripts/sync_skills.py              元のリポジトリから複製し、名前を置き換える

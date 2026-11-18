@@ -6,6 +6,7 @@
   inputs  入力の種類の一覧がある（URL・PDF・Office・HTML・YouTube・テキスト・コード・フォルダ・ZIP）（M5）
   targets Claude Code と 4 ツールの対応表があり、「配置を検査済み」「実機で確認済み」の列がある（M7）
   structure 開発者向けの「ファイル構成」と「テスト」の節が、実在する主なファイル・検査を載せている（M8 後の見直し）
+  changelog CHANGELOG.md があり、最新の版の見出しが plugins/.claude-plugin/plugin.json の version と一致する
   install   ツールごとのインストール方法（Claude Code・Copilot CLI・Codex・Gemini CLI・Antigravity）が、確認の状態つきで載っている
 
 使い方: python3 tests/check_readme.py [--only stale[,inputs,targets]] [--readme <パス>]
@@ -17,7 +18,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-ITEMS = ("stale", "inputs", "targets", "structure", "install")
+ITEMS = ("stale", "inputs", "targets", "structure", "install", "changelog")
 INPUT_KINDS = ("URL", "PDF", "Word", "Excel", "PowerPoint", "HTML", "YouTube", "テキスト", "コード", "フォルダ", "ZIP")
 TOOLS = ("Claude Code", "Codex", "Copilot", "Gemini CLI", "Antigravity")
 
@@ -65,7 +66,7 @@ def check_targets(text: str):
 LISTED = [
     "adapters/", "scripts/install.sh", "scripts/sync_skills.py", "scripts/build_explain_skill.py",
     "tests/check_portable.py", "tests/check_readme.py", "tests/check_output_layout.py",
-    "tests/check_explain.py", "tests/test_install.py",
+    "tests/check_explain.py", "tests/test_install.py", "CHANGELOG.md",
 ]
 
 
@@ -110,8 +111,26 @@ def check_install(text: str):
     return out
 
 
+def check_changelog(_text: str):
+    import json
+    p = REPO / "CHANGELOG.md"
+    if not p.is_file():
+        return ["CHANGELOG.md が無い"]
+    version = json.loads((REPO / "plugins" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+    heads = re.findall(r"^## \[?v?(\d+\.\d+\.\d+)\]?", p.read_text(encoding="utf-8"), re.M)
+    if not heads:
+        return ["CHANGELOG.md に版の見出し（## [0.0.2] など）が無い"]
+    out = []
+    if heads[0] != version:
+        out.append(f"CHANGELOG.md の最新の版（{heads[0]}）が plugin.json の version（{version}）と違う")
+    for v in ("0.0.1", version):
+        if v not in heads:
+            out.append(f"CHANGELOG.md に {v} の記載が無い")
+    return out
+
+
 CHECKS = {"stale": check_stale, "inputs": check_inputs, "targets": check_targets, "structure": check_structure,
-          "install": check_install}
+          "install": check_install, "changelog": check_changelog}
 
 
 def main() -> int:
