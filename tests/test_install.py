@@ -139,12 +139,185 @@ class InstallTest(unittest.TestCase):
         self.assertIn("claude", r.stdout)
 
     def test_unsupported_target_fails(self):
-        r = self.run_install("--target", "copilot", "--dry-run", "-y")
+        r = self.run_install("--target", "vscode", "--dry-run", "-y")
         self.assertNotEqual(r.returncode, 0)
 
     def test_unknown_option_fails(self):
         r = self.run_install("--no-such-option")
         self.assertNotEqual(r.returncode, 0)
+
+
+# ---- v0.0.2 M6：多ツール（PLAN 6 節の表） -------------------------------------------
+# (--target, --scope) → 配置先（HOME と プロジェクトのフォルダからの相対）
+TARGET_DIRS = {
+    ("claude", "user"): [".claude/skills"],
+    ("claude", "project"): [".claude/skills"],
+    ("agents", "user"): [".agents/skills"],
+    ("agents", "project"): [".agents/skills"],
+    ("copilot", "user"): [".copilot/skills"],
+    ("copilot", "project"): [".github/skills"],
+    ("antigravity", "user"): [".gemini/config/skills"],
+    ("antigravity", "project"): [".agents/skills"],
+    ("all", "user"): [".claude/skills", ".agents/skills", ".gemini/config/skills"],
+    ("all", "project"): [".claude/skills", ".agents/skills"],
+}
+FOREIGN = ["url-to-md", "pdf-to-md-ja", "craft-explanation-docs", "websearch-slide-ja", "other-skill"]
+
+
+class MultiTargetTest(unittest.TestCase):
+    """PLAN 6 節：--target（claude・agents・copilot・antigravity・all）と --scope（user・project）。"""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="ced-multi-"))
+        self.home = self.tmp / "home"
+        self.proj = self.tmp / "proj"
+        self.home.mkdir()
+        self.proj.mkdir()
+        self.env = {k: v for k, v in os.environ.items() if k != "CLAUDE_SKILLS_DIR"}
+        self.env["HOME"] = str(self.home)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_install(self, *args):
+        return subprocess.run(["bash", str(INSTALL), *args], cwd=self.proj, env=self.env,
+                              input="", capture_output=True, text=True, timeout=120)
+
+    def dirs(self, target, scope):
+        base = self.home if scope == "user" else self.proj
+        return [base / d for d in TARGET_DIRS[(target, scope)]]
+
+    def args(self, target, scope, yes=True):
+        a = ["--target", target, "--scope", scope]
+        if scope == "project":
+            a += ["--project-dir", str(self.proj)]
+        return a + (["-y"] if yes else [])
+
+    def seed_foreign_everywhere(self, target, scope):
+        for d in self.dirs(target, scope):
+            d.mkdir(parents=True, exist_ok=True)
+            for name in FOREIGN:
+                (d / name).mkdir(exist_ok=True)
+                (d / name / "SKILL.md").write_text(f"---\nname: {name}\n---\n", encoding="utf-8")
+
+    def ced_in(self, d: Path):
+        return sorted(n for n in CED if (d / n / "SKILL.md").exists())
+
+    def test_every_target_and_scope_installs_into_the_listed_places(self):
+        for (target, scope) in TARGET_DIRS:
+            with self.subTest(target=target, scope=scope):
+                r = self.run_install(*self.args(target, scope))
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                for d in self.dirs(target, scope):
+                    self.assertEqual(self.ced_in(d), sorted(CED), str(d))
+
+    def test_all_user_does_not_leave_ced_elsewhere(self):
+        """all は、列挙した 3 か所だけに入る。claude 以外の場所に、余分な複製を作らない。"""
+        r = self.run_install(*self.args("all", "user"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for rel in [".copilot/skills", ".github/skills"]:
+            self.assertFalse((self.home / rel).exists(), rel)
+
+    def test_all_project_installs_once_per_directory(self):
+        r = self.run_install(*self.args("all", "project"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        listed = [ln for ln in r.stdout.splitlines() if ln.startswith("配置先:")]
+        self.assertEqual(len(listed), len(set(listed)), listed)
+        self.assertEqual(len(listed), 2, listed)
+
+    def test_uninstall_removes_only_ced_four_for_each_target(self):
+        for (target, scope) in TARGET_DIRS:
+            with self.subTest(target=target, scope=scope):
+                self.seed_foreign_everywhere(target, scope)
+                self.assertEqual(self.run_install(*self.args(target, scope)).returncode, 0)
+                r = self.run_install(*self.args(target, scope), "--uninstall")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                for d in self.dirs(target, scope):
+                    self.assertEqual(self.ced_in(d), [], str(d))
+                    self.assertEqual(sorted(n for n in FOREIGN if (d / n / "SKILL.md").exists()), sorted(FOREIGN), str(d))
+
+    def test_dry_run_changes_nothing_for_all_targets(self):
+        for (target, scope) in TARGET_DIRS:
+            with self.subTest(target=target, scope=scope):
+                self.seed_foreign_everywhere(target, scope)
+                before = snapshot(self.home) + snapshot(self.proj)
+                r = self.run_install(*self.args(target, scope, yes=False), "--dry-run", "-y")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(snapshot(self.home) + snapshot(self.proj), before)
+                r = self.run_install(*self.args(target, scope, yes=False), "--uninstall", "--dry-run", "-y")
+                self.assertEqual(snapshot(self.home) + snapshot(self.proj), before)
+
+    def test_aliases_codex_and_gemini_mean_agents(self):
+        for alias in ("codex", "gemini"):
+            with self.subTest(alias=alias):
+                r = self.run_install("--target", alias, "--scope", "user", "-y")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(self.ced_in(self.home / ".agents/skills"), sorted(CED))
+
+    def test_list_targets_names_every_target(self):
+        r = self.run_install("--list-targets")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for name in ("claude", "agents", "copilot", "antigravity", "all"):
+            self.assertIn(name, r.stdout)
+
+    def test_option_without_value_reports_the_option(self):
+        """B4：--scope の値を省くと、黙って止まらずに、何が足りないかを伝える。"""
+        for opt in ("--scope", "--target", "--dir", "--project-dir"):
+            with self.subTest(opt=opt):
+                r = self.run_install(opt)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(opt, r.stderr)
+
+    def test_help_starts_with_the_title_not_a_rule_line(self):
+        """B4：--help の先頭の行は、罫線ではなく題。"""
+        r = self.run_install("--help")
+        self.assertEqual(r.returncode, 0)
+        first = r.stdout.splitlines()[0]
+        self.assertIn("install.sh", first)
+        self.assertNotIn("====", r.stdout)
+
+    def test_dir_with_target_all_is_an_error_but_single_target_is_fine(self):
+        d = self.tmp / "custom"
+        before = snapshot(self.tmp)
+        r = self.run_install("--target", "all", "--dir", str(d), "-y")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(snapshot(self.tmp), before)
+        r = self.run_install("--target", "copilot", "--dir", str(d), "-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.ced_in(d), sorted(CED))
+
+    def test_warns_when_project_has_both_claude_and_agents(self):
+        """Copilot は .claude/skills と .agents/skills の両方を読むので、両方に入れるときは警告する。"""
+        r = self.run_install(*self.args("all", "project"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("WARN", r.stderr)
+        # 片方を入れた後で、もう片方を入れるときも警告する
+        self.assertEqual(self.run_install(*self.args("agents", "project"), "--uninstall").returncode, 0)
+        r = self.run_install(*self.args("claude", "project"))
+        self.assertNotIn("WARN", r.stderr)  # .claude に入れ直すだけで、.agents は空
+        self.assertEqual(self.run_install(*self.args("agents", "project")).returncode, 0)
+        r = self.run_install(*self.args("agents", "project"))
+        self.assertIn("WARN", r.stderr)
+
+    def test_no_warning_for_a_single_tool_or_user_scope(self):
+        for target, scope in (("claude", "project"), ("agents", "project"), ("all", "user"), ("copilot", "project")):
+            with self.subTest(target=target, scope=scope):
+                self.setUp_clean()
+                r = self.run_install(*self.args(target, scope))
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertNotIn("WARN", r.stderr)
+
+    def setUp_clean(self):
+        shutil.rmtree(self.proj, ignore_errors=True)
+        shutil.rmtree(self.home, ignore_errors=True)
+        self.proj.mkdir()
+        self.home.mkdir()
+
+    def test_unknown_target_fails_and_writes_nothing(self):
+        before = snapshot(self.home) + snapshot(self.proj)
+        r = self.run_install("--target", "vscode", "--scope", "user", "-y")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(snapshot(self.home) + snapshot(self.proj), before)
 
 
 if __name__ == "__main__":

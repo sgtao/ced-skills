@@ -94,18 +94,30 @@ Claude Code を開き、次の 2 行を順に入力します（`/plugin` で始�
 ```bash
 git clone https://github.com/sgtao/ced-skills.git
 cd ced-skills
-bash scripts/install.sh --scope user    # ~/.claude/skills へ入れる
+bash scripts/install.sh --scope user    # 既定は --target claude（~/.claude/skills へ入れる）
 ```
+
+ツールごとの配置先は、`--target` で選びます（`bash scripts/install.sh --list-targets` で一覧）。
+
+| `--target` | `--scope user` | `--scope project`（`--project-dir` の下） |
+|---|---|---|
+| `claude`（既定） | `~/.claude/skills` | `.claude/skills` |
+| `agents`（別名 `codex`・`gemini`） | `~/.agents/skills` | `.agents/skills` |
+| `copilot` | `~/.copilot/skills` | `.github/skills` |
+| `antigravity` | `~/.gemini/config/skills` | `.agents/skills` |
+| `all` | Claude・agents・antigravity の 3 か所（同じ場所は 1 回だけ） | `.claude/skills`・`.agents/skills` |
 
 その他の指定：
 
 ```bash
-bash scripts/install.sh --scope project --project-dir <dir>   # <dir>/.claude/skills へ
-bash scripts/install.sh --dir <フォルダ>                      # 任意の配置先へ
-bash scripts/install.sh --scope user --dry-run                # 何も書かず、行う操作だけ表示
-bash scripts/install.sh --scope user -y                       # 確認の問いを省く
-bash scripts/install.sh --scope user --uninstall              # ced- の 4 つだけ外す
+bash scripts/install.sh --target all --scope project --project-dir <dir>   # 複数のツールへ、プロジェクトの下に入れる
+bash scripts/install.sh --dir <フォルダ>                                  # 任意の配置先へ（単一の --target と使う。all とは使えない）
+bash scripts/install.sh --scope user --dry-run                            # 何も書かず、行う操作だけ表示
+bash scripts/install.sh --scope user -y                                   # 確認の問いを省く
+bash scripts/install.sh --target copilot --scope user --uninstall         # ced- の 4 つだけ外す
 ```
+
+プロジェクトの `.claude/skills` と `.agents/skills` の両方に入れると、Copilot CLI が両方を読むので、警告が出ます（どちらか一方にしてください）。
 
 この方法では、**`/ced-skills:explain` は使えません**（コマンドは入らず、スキル 4 つだけが入ります）。代わりに [docs/instructions.md](docs/instructions.md) の「3. 自然文で頼む」の例文を Claude に渡してください。
 
