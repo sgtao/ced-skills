@@ -20,8 +20,8 @@
           "replacements": 0
         },
         "scripts/collect_sources.py": {
-          "orig_sha256": "aefd04387b567307ef807c9201d51c42424b027d35c0ea6fa4109086f294191b",
-          "out_sha256": "aefd04387b567307ef807c9201d51c42424b027d35c0ea6fa4109086f294191b",
+          "orig_sha256": "1aff1a8834ecde49f4bca01f4cc55ac066b3f29617e36015fbfd0f6e25bf1882",
+          "out_sha256": "1aff1a8834ecde49f4bca01f4cc55ac066b3f29617e36015fbfd0f6e25bf1882",
           "replacements": 0
         },
         "scripts/fetch_convert.py": {
