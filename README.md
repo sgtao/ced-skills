@@ -10,6 +10,20 @@
   - `ced-websearch-slide-ja`：解説をスライド（MD・HTML）にする
 - コマンド 1 つ：`/ced-skills:explain`（4 スキルを連携させる手順）
 
+## ファイル構成
+
+```
+ced-skills/
+├── .claude-plugin/marketplace.json     リポジトリ自体を marketplace にする（プラグインの置き場は ./plugins）
+├── plugins/                            プラグイン ced-skills の根（.claude-plugin/plugin.json がここにある）
+│   ├── .claude-plugin/plugin.json
+│   ├── ced-url-to-md/  ced-pdf-to-md-ja/  ced-craft-explanation-docs/  ced-websearch-slide-ja/
+│   └── commands/explain.md             総合インストラクション
+├── docs/instructions.md
+├── scripts/install.sh  scripts/sync_skills.py
+└── tests/
+```
+
 ## 入れ方
 
 ### A. プラグインとして入れる（推奨）

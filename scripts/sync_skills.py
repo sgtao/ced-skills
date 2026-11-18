@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""01_sources の 4 スキルを plugins/ced-skills/skills/ に複製し、名前に ced- を付ける。
+"""01_sources の 4 スキルを plugins/ に複製し、名前に ced- を付ける。
 
 - 置き換えは、フォルダ名・SKILL.md の name:・Markdown（.md）の中の 4 スキル名だけ。
   前後が英数字かハイフンなら置き換えない（url-to-md が ced-url-to-md の一部になるのを防ぐ）。
@@ -21,7 +21,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCES = REPO.parents[1] / "01_sources"
-DEST = REPO / "plugins" / "ced-skills" / "skills"
+DEST = REPO / "plugins"
 LOCK = REPO / "sources.lock.json"
 
 # 元の名前 -> 01_sources の中の場所

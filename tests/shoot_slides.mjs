@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
-const capture = path.join(repo, 'plugins/ced-skills/skills/ced-websearch-slide-ja/assets/scripts/capture.mjs');
+const capture = path.join(repo, 'plugins/ced-websearch-slide-ja/assets/scripts/capture.mjs');
 
 const html = process.argv[2];
 if (!html || !existsSync(html)) {

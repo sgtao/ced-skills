@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """合格条件 6：explain の質問の扱いを確かめる（静的検査＋E2E の記録）。
 
-静的検査（plugins/ced-skills/commands/explain.md）:
+静的検査（plugins/commands/explain.md）:
 - 質問の定義が 4 問以内（既定で 3 問）、質問文と選択肢があり、質問文が日本語
 - AskUserQuestion を呼ぶ指示は、手順 1 の中だけにある
 - 引数が 3 つそろったときは AskUserQuestion を呼ばない、と書いてある
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-EXPLAIN = REPO / "plugins/ced-skills/commands/explain.md"
+EXPLAIN = REPO / "plugins/commands/explain.md"
 
 
 def static_checks(text: str):

@@ -19,7 +19,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="${REPO}/plugins/ced-skills/skills"
+SRC="${REPO}/plugins"
 SKILLS="ced-url-to-md ced-pdf-to-md-ja ced-craft-explanation-docs ced-websearch-slide-ja"
 
 TARGET="claude"

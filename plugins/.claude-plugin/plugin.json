@@ -6,5 +6,11 @@
     "name": "sgtao"
   },
   "license": "MIT",
-  "icon": "./.claude-plugin/icon.png"
+  "icon": "./.claude-plugin/icon.png",
+  "skills": [
+    "./ced-url-to-md",
+    "./ced-pdf-to-md-ja",
+    "./ced-craft-explanation-docs",
+    "./ced-websearch-slide-ja"
+  ]
 }

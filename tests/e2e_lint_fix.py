@@ -20,7 +20,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SEEDED = REPO / "tests/fixtures/lint/seeded-slides.md"
-PLUGIN = REPO / "plugins/ced-skills"
+PLUGIN = REPO / "plugins"
 
 
 def lint_counts(md: Path):

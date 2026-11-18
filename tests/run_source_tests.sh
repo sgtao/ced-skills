@@ -2,14 +2,14 @@
 # 合格条件 5：元のリポジトリ（11 と 12）の pytest を、複製したスキルに向けて実行し、失敗 0 を確かめる。
 #
 # 作業フォルダ（一時）に、元のテストの配置を再現する。スキルのフォルダだけは
-# 複製（plugins/ced-skills/skills/ced-*）へのシンボリックリンクで、元の名前（url-to-md など）にする。
+# 複製（plugins/ced-*）へのシンボリックリンクで、元の名前（url-to-md など）にする。
 # テストは元のままで、外すものは tests/source-exclusions.txt に理由付きで書く。
 #
 # 使い方（リポジトリのトップから）: bash tests/run_source_tests.sh
 # 環境変数: PYTHON_VERSION（既定 3.12。onnxruntime が 3.14 の wheel を持たないため）、KEEP=1 で作業フォルダを残す
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="${ROOT}/plugins/ced-skills/skills"
+SRC="${ROOT}/plugins"
 ORIG="${CED_SOURCES:-${ROOT}/../../01_sources}"   # 元のリポジトリの 01_sources（既定の場所）
 PY="${PYTHON_VERSION:-3.12}"
 EXCL="${ROOT}/tests/source-exclusions.txt"

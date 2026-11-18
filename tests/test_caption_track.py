@@ -8,7 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "plugins/ced-skills/skills/ced-url-to-md/scripts"
+SCRIPTS = Path(__file__).resolve().parents[1] / "plugins/ced-url-to-md/scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import youtube_to_md  # noqa: E402

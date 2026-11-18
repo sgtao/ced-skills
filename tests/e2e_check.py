@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-CHECK_DOCS = (REPO / "plugins/ced-skills/skills/ced-craft-explanation-docs/scripts/check_docs.py")
+CHECK_DOCS = (REPO / "plugins/ced-craft-explanation-docs/scripts/check_docs.py")
 FINAL_FILES = [
     "README.md",
     "01_source.md",
