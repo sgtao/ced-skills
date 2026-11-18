@@ -352,11 +352,15 @@ def c3(ctx: Ctx):
 
 
 _PLACEHOLDER = re.compile(r"\{\{|\}\}|＜[^＞\n]{0,80}＞|\bTODO\b")
+# 01_source.md は入力の複製（変えない）。入力の中の {{ や TODO は、解説の作業の残りものではない
+_VERBATIM = ("01_source.md",)
 
 
 def c4(ctx: Ctx):
     out = []
     for n in ctx.present():
+        if n in _VERBATIM:
+            continue
         text = ctx.head(n)
         lines = normalize_text(text).split("\n")
         flags = fence_flags(lines)

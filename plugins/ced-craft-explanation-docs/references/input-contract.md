@@ -33,6 +33,8 @@
 | `youtube` | `video` | `references/profiles/video.md` |
 | `html` | `article` | `references/profiles/article.md` |
 | `pdf`・`docx`・`pptx`・`xlsx` | `document` | `references/profiles/document.md` |
+| `text`・`code`（v0.0.2：テキスト・コードの入力） | `article` | `references/profiles/article.md` |
+| `subtitle`（v0.0.2：字幕ファイル `.vtt`・`.srt`） | `video` | `references/profiles/video.md` |
 
 frontmatter が無いときの推定（`scaffold.py` が行う）: 段落頭の `**[MM:SS]**` が 3 つ以上 → `video`／`<!-- Slide number: N -->` か `<!-- page N -->` が 2 つ以上 → `document`／それ以外 → `article`。推定したときは理由が `profile_reason` に出る。
 

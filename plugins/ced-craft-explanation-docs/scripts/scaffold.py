@@ -33,7 +33,9 @@ MIN_BODY_CHARS = 30  # これより短い本文は EMPTY_CONTENT
 MAX_SECTIONS = 12    # 見出しがこれより多いときは、上位の見出しでまとめる（目安）
 
 FORMAT_TO_PROFILE = {"youtube": "video", "html": "article",
-                     "pdf": "document", "docx": "document", "pptx": "document", "xlsx": "document"}
+                     "pdf": "document", "docx": "document", "pptx": "document", "xlsx": "document",
+                     # v0.0.2：collect_sources.py が包んだ入力（文字・コード・字幕）
+                     "text": "article", "code": "article", "subtitle": "video"}
 
 _STAMP = re.compile(r"^\*\*\[(\d{1,2}(?::\d{2}){1,2})\]\*\*", re.M)
 _CHAPTER = re.compile(r"^(\d{1,2}(?::\d{2}){1,2})[ \t]+(\S.*)$")
