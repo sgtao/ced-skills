@@ -99,6 +99,8 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
   - 目的: おまかせ
   - 情報ソース: 解説メモだけ（Web 検索しない）
   - ビジュアル: グラフ作成＋画像なし
+    - 見た目（D11）: 流れや要点は `steps` 型で描く。節の区切りに `tone: dark` を 1 つ以上入れる。要点の言葉は `==強調==` で示す。節の名前は `badge:` で出す
+    - 出典は `sources` 型を使わず、`points` の箇条にリンクを書く（`sources` は注意書きが画面に描かれないことがあるため）
   - 枚数: 手順 1 で決めた枚数（`--slides` の値）
   - 保存先: `<作業フォルダ>/docs/`。ファイル名は `<名前>-slides.md`・`<名前>-slides.html`。`<名前>` は日付を除いた名前（`YYMMDD_` を外した部分。2 件以上のときは子のスラッグ）
   - 想定読者: 手順 1 で決めた読み手（`--audience` の値）
