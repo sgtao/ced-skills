@@ -21,7 +21,9 @@
 from __future__ import annotations
 
 import glob
+import html as _html
 import importlib.util
+import json
 import os
 import pathlib
 import platform
@@ -531,3 +533,69 @@ def format_env(env: dict) -> list[str]:
         lines.append(f"{('py:' + name).ljust(21)}: {'あり' if found else '無し'}")
     lines.append("network".ljust(21) + ": 調べていない（対象の URL を取得してみて判定する）")
     return lines
+
+
+# ---- HTML の題と公開日（D21）-------------------------------------------------------------
+_META_TAG_RE = re.compile(r"<meta\s[^>]*>", re.I)
+_ATTR_RE = re.compile(r"([\w:-]+)\s*=\s*(\"[^\"]*\"|'[^']*')")
+_LD_RE = re.compile(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>", re.I | re.S)
+_TIME_RE = re.compile(r"<time\b[^>]*\bdatetime\s*=\s*[\"']([^\"']+)[\"']", re.I)
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
+
+
+def _find_key(obj, key):
+    """JSON-LD の中から、最初に見つかった key の文字列の値を返す。"""
+    if isinstance(obj, dict):
+        v = obj.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        obj = list(obj.values())
+    if isinstance(obj, list):
+        for x in obj:
+            found = _find_key(x, key)
+            if found:
+                return found
+    return None
+
+
+def extract_html_meta(html: str) -> dict:
+    """HTML から題と公開日を取り出す。
+
+    戻り値: {"title", "date"（YYYY-MM-DD か None）, "date_source"（取れなければ None）}。
+    公開日の順は、`article:published_time` → JSON-LD の `datePublished` → `<time datetime>`。
+    値の妥当性（古すぎる・未来）は呼び出し側で確かめる。
+    """
+    metas = {}
+    for tag in _META_TAG_RE.findall(html):
+        attrs = {k.lower(): v[1:-1] for k, v in _ATTR_RE.findall(tag)}
+        key = (attrs.get("property") or attrs.get("name") or "").lower()
+        if key and "content" in attrs:
+            metas.setdefault(key, _html.unescape(attrs["content"]).strip())
+
+    raw, source = None, None
+    if metas.get("article:published_time"):
+        raw, source = metas["article:published_time"], "meta:article:published_time"
+    if raw is None:
+        for block in _LD_RE.findall(html):
+            try:
+                found = _find_key(json.loads(block), "datePublished")
+            except ValueError:
+                continue
+            if found:
+                raw, source = found, "json-ld:datePublished"
+                break
+    if raw is None:
+        m = _TIME_RE.search(html)
+        if m:
+            raw, source = m.group(1).strip(), "time:datetime"
+    date = None
+    if raw:
+        m = re.match(r"(\d{4})-(\d{2})-(\d{2})", raw)
+        date = m.group(0) if m else raw  # 形が違っても、そのまま返す（整えるのは呼び出し側）
+
+    title = metas.get("og:title") or None
+    if not title:
+        m = _TITLE_RE.search(html)
+        if m:
+            title = re.sub(r"\s+", " ", _html.unescape(m.group(1))).strip() or None
+    return {"title": title, "date": date, "date_source": source if date else None}

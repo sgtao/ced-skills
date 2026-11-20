@@ -94,5 +94,26 @@ class M5StaticTest(unittest.TestCase):
         self.assertTrue(any("指示文" in p for p in ce.m5_checks(text)))
 
 
+class V3StaticTest(unittest.TestCase):
+    """v0.0.3 V3-M2：題と日付・取得・読み飛ばし・再開を、手順書が言っているか。"""
+
+    NEEDLES = {"`fetch`": "fetch", "needs_fetch": "needs_fetch", "date_source": "date_source",
+               "--resume": "--resume", "resumable": "resumable", "ALREADY_EXPLAINED": "ALREADY_EXPLAINED",
+               "ALL_EXPLAINED": "ALL_EXPLAINED", "head": "head"}
+
+    def test_current_explain_passes(self):
+        self.assertEqual(ce.v3_checks(ce.EXPLAIN.read_text(encoding="utf-8")), [])
+
+    def test_each_rule_is_enforced(self):
+        base = ce.EXPLAIN.read_text(encoding="utf-8")
+        for needle, expect in self.NEEDLES.items():
+            probs = ce.v3_checks(base.replace(needle, "＿＿"))
+            self.assertTrue(any(expect in p for p in probs), needle)
+
+    def test_old_unimplemented_date_note_fails(self):
+        text = ce.EXPLAIN.read_text(encoding="utf-8") + "\n日付は今は実行した日を使う（公開日・作成日の取得は未実装）。\n"
+        self.assertTrue(any("未実装" in p for p in ce.v3_checks(text)))
+
+
 if __name__ == "__main__":
     unittest.main()

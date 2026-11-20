@@ -2,10 +2,10 @@
 
 `/ced-skills:explain` を使うときの、そのまま貼れる指示の例です。URL・ファイル・フォルダ・ZIP のどれかを入れて使ってください。
 
-## 1. コマンドで実行する（引数で答えを渡す。質問は出ない）
+## 1. コマンドで実行する（`--name`・`--slides`・`--audience` の 3 つを渡すと、質問は出ない）
 
 ```
-/ced-skills:explain <URL または ファイルのパス> --out ./explain-out --slides 8 --audience 実務で使う人
+/ced-skills:explain <URL または ファイルのパス> --name <フォルダ名> --slides 8 --audience 実務で使う人
 ```
 
 ## 2. 対話で実行する（足りない答えだけ、1 回にまとめて聞かれる）
@@ -15,7 +15,7 @@
 ```
 
 聞かれる項目（足りないものだけ。最大 4 問）:
-- 出力先（既定: `./explain-out/<入力の名前>`）
+- フォルダ名（候補 3 つ。出力は、今いるフォルダの直下の `YYMMDD_<名前>/`）
 - スライドの枚数（既定: 6 枚）
 - 読み手（既定: 初めて読む人）
 - 入力の確認（未完了が 2 件以上、または参照元が 2 つあるとき。件数と見積もりを示して、全件・先頭 5 件・やめる、から選ぶ）
@@ -23,18 +23,18 @@
 ## 3. フォルダや ZIP をまとめて頼む
 
 ```
-/ced-skills:explain ./materials.zip --out ./explain-out/materials --slides 8 --audience 実務で使う人
+/ced-skills:explain ./materials.zip --name materials --slides 8 --audience 実務で使う人
 /ced-skills:explain --source-dir ./01_source --max-files 10
 ```
 
-入力が 2 件以上のときは、出力先に `00_index.md`（一覧）と、入力ごとのフォルダができます。
+入力が 2 件以上のときは、`YYMMDD_<名前>/` に `00_index.md`（一覧）と、入力ごとのフォルダができます。引数なしで実行すると、解説済みの項目は飛ばされます。
 
 ## 4. 自然文で頼む（スキルを直接使う場合）
 
 ```
 次の資料から、解説メモと解説スライド（MD と HTML）を作ってください。
 資料: <URL または ファイルのパス>
-出力先: ./explain-out
+出力先: 今いるフォルダの直下（フォルダ名は `materials-guide` など）
 スライドは 8 枚、読み手は実務で使う人です。
 ```
 

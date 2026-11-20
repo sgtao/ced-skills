@@ -110,3 +110,53 @@ def test_cli_prints_json_list(tmp_path):
     assert r.returncode == 0, r.stderr
     names = json.loads(r.stdout)
     check_shape(names)
+
+
+# ---- 再開（D18。reviewer の M2）：同じ入力の既存フォルダは、避けずに先頭の候補にする --------------
+def test_resume_name_comes_first_and_is_not_suffixed():
+    existing = ["261118_plugin-guide"]
+    names = ced_name.make_candidates("261120", ["plugin guide", "cc basics"], existing,
+                                     resume=["261118_plugin-guide"])
+    check_shape(names)
+    assert names[0] == "261118_plugin-guide"
+    assert not any(n.endswith("-2") for n in names)
+
+
+def test_resume_does_not_free_other_existing_names():
+    existing = ["261120_plugin-guide", "261120_other"]
+    names = ced_name.make_candidates("261120", ["plugin guide", "other"], existing,
+                                     resume=["261120_plugin-guide"])
+    check_shape(names)
+    assert names[0] == "261120_plugin-guide"
+    assert "261120_other" not in names and "261120_other-2" in names
+
+
+def test_same_name_as_resume_is_not_repeated():
+    names = ced_name.make_candidates("261118", ["plugin guide", "plugin guide"], ["261118_plugin-guide"],
+                                     resume=["261118_plugin-guide"])
+    check_shape(names)
+    assert names.count("261118_plugin-guide") == 1
+
+
+def test_resume_names_with_a_bad_shape_are_dropped():
+    names = ced_name.make_candidates("261118", ["plugin guide"], [],
+                                     resume=["no-date", "261118_Upper", "261118_" + "x" * 41])
+    check_shape(names)
+    assert names[0] == "261118_plugin-guide"
+
+
+def test_resume_is_capped_at_three():
+    res = [f"261118_n{i}" for i in range(5)]
+    names = ced_name.make_candidates("261118", ["x"], res, resume=res)
+    assert names == res[:3]
+
+
+def test_cli_resume_option(tmp_path):
+    (tmp_path / "261118_plugin-guide").mkdir()
+    r = subprocess.run([sys.executable, str(SCRIPT), "--date", "261120", "--title", "plugin guide",
+                        "--existing", str(tmp_path), "--resume", "261118_plugin-guide"],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert r.returncode == 0, r.stderr
+    names = json.loads(r.stdout)
+    check_shape(names)
+    assert names[0] == "261118_plugin-guide"

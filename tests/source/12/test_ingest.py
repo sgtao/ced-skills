@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from pathlib import Path
 
 import pytest
 
-from conftest import INPUTS, ROOT, run_script
+from conftest import INPUTS, ROOT, default_dest, run_script
 from check_docs import run_checks
 import scaffold as S
 
@@ -23,7 +24,8 @@ def ingest(tmp_path, name, split_lines=None, overview="本文の概要です。"
     p = run_script("scaffold.py", src)
     assert p.returncode == 0, p.stderr
     r = json.loads(p.stdout)
-    dest = tmp_path / r["dest"].split("/")[-1]
+    dest = Path(r["dest"])  # 既定は、今いるフォルダ（conftest が一時フォルダにしてある）の直下
+    assert dest == default_dest(src.stem)
     sec = r["sections"]
     toc_src = split_lines if split_lines is not None else sec["toc_for_source"]
     toc_rd = split_lines if split_lines is not None else sec["toc_for_readme"]

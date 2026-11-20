@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from conftest import GOLDEN_VIDEO, INPUTS, ROOT, run_script
+from conftest import GOLDEN_VIDEO, INPUTS, ROOT, default_dest, run_script
 import _common as C
 from check_docs import run_checks
 
@@ -47,7 +47,7 @@ def test_creates_folder_for_each_fixture(work, name, profile):
     before = src.read_bytes()
     p, r = scaffold(src)
     assert p.returncode == 0, p.stderr
-    dest = src.parent / (src.stem + "_explained")
+    dest = default_dest(src.stem)
     assert r["dest"] == str(dest) and r["profile"] == profile and r["mode"] == "created"
     for f in ("README.md", "01_source.md", "out/00_manifest.json", "out/00_run-report.md"):
         assert (dest / f).is_file(), f
@@ -60,7 +60,7 @@ def test_creates_folder_for_each_fixture(work, name, profile):
 def test_source_body_is_exact_copy_of_input_body(work, name):
     src = work(name)
     scaffold(src)
-    dest = src.parent / (src.stem + "_explained")
+    dest = default_dest(src.stem)
     _, want, _ = C.parse_frontmatter(src.read_text(encoding="utf-8"))
     assert body_of(dest) == C.normalize_body(want)  # 一字も変えない（末尾の改行は 1 つ）
     m = json.loads((dest / "out/00_manifest.json").read_text(encoding="utf-8"))
@@ -74,7 +74,7 @@ def test_scaffold_output_matches_golden_for_video(work):
     """手作りの合格見本と、本文・ハッシュ・題名の箇条書きが同じ（見本の冒頭の決まりと scaffold が一致）。"""
     src = work("video.md")
     scaffold(src)
-    dest = src.parent / "video_explained"
+    dest = default_dest("video")
     got = (dest / "01_source.md").read_text(encoding="utf-8")
     want = (GOLDEN_VIDEO / "01_source.md").read_text(encoding="utf-8")
     assert C.split_source(got)[1] == C.split_source(want)[1]
@@ -87,7 +87,7 @@ def test_scaffold_output_matches_golden_for_video(work):
 def test_skeleton_leaves_placeholders_for_llm(work):
     src = work("article.md")
     scaffold(src)
-    dest = src.parent / "article_explained"
+    dest = default_dest("article")
     s = (dest / "01_source.md").read_text(encoding="utf-8")
     head = C.split_source(s)[0]
     assert "{{summary}}" in head and "{{toc_block}}" in head
@@ -131,7 +131,7 @@ def test_video_without_chapters_has_no_candidates(work):
 def test_article_headings_become_linked_toc_with_valid_anchors(work):
     src = work("article.md")
     _, r = scaffold(src)
-    dest = src.parent / "article_explained"
+    dest = default_dest("article")
     s = r["sections"]
     assert s["source"] == "headings"
     titles = [h["title"] for h in s["headings"] if h["level"] == 2]
@@ -162,7 +162,7 @@ def test_plain_without_frontmatter_continues_with_warning(work):
     assert r["title"] == "打ち合わせメモ（在庫の棚卸しの進め方）"  # 本文の題名から
     assert r["profile"] == "article" and "frontmatter なし" in r["profile_reason"]
     assert r["sections"]["source"] == "none" and r["sections"]["toc_for_source"] == []  # 見出しが無い → 目次を省く
-    dest = src.parent / "plain_explained"
+    dest = default_dest("plain")
     report = (dest / "out/00_run-report.md").read_text(encoding="utf-8")
     assert "frontmatter: なし" in report
     readme = (dest / "README.md").read_text(encoding="utf-8")
@@ -186,12 +186,12 @@ def test_local_path_source_url_is_not_shown_as_url(tmp_path):
                  "# 題\n\n本文本文本文本文本文本文本文本文本文本文本文本文本文。\n", encoding="utf-8")
     _, r = scaffold(p)
     assert r["url"] is None
-    assert "`url`" not in (tmp_path / "d_explained" / "README.md").read_text(encoding="utf-8")
+    assert "`url`" not in (default_dest("d") / "README.md").read_text(encoding="utf-8")
 
 
 def test_dest_exists_stops_and_writes_nothing(work):
     src = work("video.md")
-    dest = src.parent / "video_explained"
+    dest = default_dest("video")
     dest.mkdir()
     (dest / "keep.txt").write_text("そのまま", encoding="utf-8")
     p = run_script("scaffold.py", src)
@@ -212,14 +212,14 @@ def test_dry_run_writes_nothing(work):
     src = work("video.md")
     p, r = scaffold(src, "--dry-run")
     assert p.returncode == 0 and r["dry_run"] is True and r["files"]
-    assert not (src.parent / "video_explained").exists()
+    assert not (default_dest("video")).exists()
 
 
 def test_multi_source(work):
     a, b = work("video.md"), work("article.md")
     p = run_script("scaffold.py", a, b)
     assert p.returncode == 1 and p.stderr.strip().splitlines()[-1] == "REASON=MULTI_SOURCE"
-    assert not (a.parent / "video_explained").exists()
+    assert not (default_dest("video")).exists()
 
 
 def test_url_is_not_fetched():
@@ -240,7 +240,7 @@ def test_missing_file_and_empty_input(tmp_path):
     s.write_text("---\ntitle: 題\nsource_url: u\nsource_format: html\n---\n短い\n", encoding="utf-8")
     p = run_script("scaffold.py", s)
     assert p.stderr.strip().splitlines()[-1] == "REASON=EMPTY_CONTENT"
-    assert not (tmp_path / "s_explained").exists()
+    assert not (default_dest("s")).exists()
 
 
 def test_crlf_input_gives_same_body_hash(tmp_path):
@@ -252,7 +252,7 @@ def test_crlf_input_gives_same_body_hash(tmp_path):
     shutil.copy(lf, ref)
     _, r2 = scaffold(ref)
     assert r1["body_sha256"] == r2["body_sha256"]
-    assert b"\r" not in (tmp_path / "a_explained" / "01_source.md").read_bytes()
+    assert b"\r" not in (default_dest("a") / "01_source.md").read_bytes()
 
 
 def test_existing_folder_is_reported_not_rewritten(tmp_path):
@@ -296,3 +296,76 @@ def test_scaffold_reads_real_add_frontmatter_output(tmp_path, fmt, extra, profil
     assert p.returncode == 0, p.stderr
     assert r["profile"] == profile and r["frontmatter_warnings"] == []
     assert r["title"] == "実出力の確認" and r["url"] == "https://example.com/x"
+
+
+# ---- 既定の作業フォルダ（V3-M2：今いるフォルダの直下の YYMMDD_<名前>/。explain の形と揃える）----------------
+import datetime  # noqa: E402
+import os  # noqa: E402
+
+
+def test_default_dest_is_under_cwd_with_run_date_and_not_next_to_input(work, tmp_path):
+    src = work("article.md")
+    _, r = scaffold(src)
+    want = tmp_path / "cwd" / f"{datetime.date.today():%y%m%d}_article"
+    assert r["dest"] == str(want) and (want / "01_source.md").is_file()
+    assert os.getcwd() == str(tmp_path / "cwd")
+    # 入力の隣には何も作らない（v0.0.2 の <名前>_explained/ ではない）
+    assert not (src.parent / "article_explained").exists()
+    assert sorted(p.name for p in src.parent.iterdir()) == ["article.md", "cwd"]
+
+
+@pytest.mark.parametrize("stem,body", [
+    ("Claude Code Plugin Guide", "claude-code-plugin-guide"),
+    ("report_2025.v2", "report-2025-v2"),
+    ("--weird__name!!", "weird-name"),
+    ("日本語だけ", "source"),
+    ("日本語 mixed 題", "mixed"),
+    ("!!!", "source"),
+    ("word-" * 12, "word-word-word-word-word-word-word-word"),  # 40 文字以内の単語の切れ目（8 語・39 字）
+    ("x" * 60, "x" * 40),  # 切れ目が無ければ強制的に 40 字
+])
+def test_default_dest_name_rules(tmp_path, stem, body):
+    """名前は ced_name.py と同じ決まり（英小文字・数字・-、40 文字以内、英字が無ければ source）。日付は実行した日。"""
+    src = tmp_path / (stem + ".md")
+    shutil.copy(INPUTS / "article.md", src)
+    _, r = scaffold(src)
+    name = os.path.basename(r["dest"])
+    assert re.fullmatch(r"[0-9]{6}_[a-z0-9]+(-[a-z0-9]+)*", name), name
+    assert name.split("_", 1)[0] == f"{datetime.date.today():%y%m%d}"
+    assert name.split("_", 1)[1] == body and len(body) <= 40
+
+
+def test_default_dest_exists_stops_even_when_it_is_the_new_default(work):
+    src = work("video.md")
+    scaffold(src)  # 1 回目で作る
+    p = run_script("scaffold.py", src)  # 同じ日に同じ名前でもう一度
+    assert p.returncode == 1 and p.stderr.strip().splitlines()[-1] == "REASON=DEST_EXISTS"
+
+
+def test_help_describes_the_new_default(tmp_path):
+    p = run_script("scaffold.py", "--help")
+    assert p.returncode == 0
+    assert "_explained" not in p.stdout
+    assert "YYMMDD_" in p.stdout and "今いるフォルダ" in p.stdout
+
+
+# ---- reviewer の H1：explain は prepare で <出力先>/.work/ を作ってから、そこへ scaffold する ------------------
+def test_dest_that_has_only_a_work_folder_is_accepted(work, tmp_path):
+    src = work("article.md")
+    dest = tmp_path / "261120_out"
+    (dest / ".work").mkdir(parents=True)
+    (dest / ".work" / "sources.json").write_text("{}", encoding="utf-8")
+    p, r = scaffold(src, "--dest", dest)
+    assert p.returncode == 0, p.stderr
+    assert (dest / "01_source.md").is_file() and (dest / "README.md").is_file()
+    assert (dest / ".work" / "sources.json").read_text(encoding="utf-8") == "{}"  # 中間の記録はそのまま
+
+
+def test_dest_with_other_content_still_stops(work, tmp_path):
+    src = work("article.md")
+    dest = tmp_path / "d"
+    (dest / ".work").mkdir(parents=True)
+    (dest / "memo.txt").write_text("x", encoding="utf-8")
+    p = run_script("scaffold.py", src, "--dest", dest)
+    assert p.returncode == 1 and p.stderr.strip().splitlines()[-1] == "REASON=DEST_EXISTS"
+    assert not (dest / "01_source.md").exists()

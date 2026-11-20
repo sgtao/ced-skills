@@ -7,6 +7,8 @@
 
 使い方:
   python3 ced_name.py --date 261118 --title "Claude Code Plugin Guide" --title "cc plugin basics" --existing <出力先>
+  同じ入力の既存フォルダがあるとき（collect_sources.py plan の resumable）: --resume <既存のフォルダ名> を足す。
+  既存の名前は避けずに、先頭の候補にする（再開。D18）。それ以外の既存の名前は、これまでどおり避ける。
   → JSON の配列（3 件）を標準出力へ
 終了コード: 0＝成功、2＝引数が不正（日付の形など）
 """
@@ -21,6 +23,7 @@ MAX_BODY = 40
 COUNT = 3
 FALLBACK = "source"
 DATE_RE = re.compile(r"^[0-9]{6}$")
+NAME_RE = re.compile(r"^[0-9]{6}_[a-z0-9]+(-[a-z0-9]+)*$")  # D13
 
 
 def check_date(date: str) -> None:
@@ -48,12 +51,24 @@ def cut(body: str, limit: int = MAX_BODY) -> str:
     return body[:cut_at].rstrip("-")
 
 
-def make_candidates(date: str, titles, existing, count: int = COUNT):
-    """候補を count 個返す。existing は既にあるフォルダ名（YYMMDD_ 付きの全名）の集合。"""
+def valid_name(name: str) -> bool:
+    return bool(NAME_RE.match(name)) and len(name.split("_", 1)[1]) <= MAX_BODY
+
+
+def make_candidates(date: str, titles, existing, count: int = COUNT, resume=()):
+    """候補を count 個返す。existing は既にあるフォルダ名（YYMMDD_ 付きの全名）の集合。
+
+    resume は、同じ入力の続きになる既存のフォルダ名。形（D13）に合うものだけを、避けずに先頭へ置く。
+    """
     check_date(date)
     taken = set(existing)
     out = []
     seen = set()
+    for name in resume:
+        if len(out) < count and valid_name(name) and name not in out:
+            out.append(name)
+            taken.add(name)
+            seen.add(name.split("_", 1)[1])
 
     def add(raw: str) -> None:
         body = cut(slugify(raw))
@@ -93,9 +108,12 @@ def main() -> int:
     ap.add_argument("--date", required=True, help="YYMMDD")
     ap.add_argument("--title", action="append", default=[], help="英訳・要約の候補（複数回指定）")
     ap.add_argument("--existing", type=Path, help="この中にある名前を避ける")
+    ap.add_argument("--resume", action="append", default=[], metavar="NAME",
+                    help="同じ入力の続きになる既存のフォルダ名（先頭の候補にする。複数回指定）")
     a = ap.parse_args()
     try:
-        names = make_candidates(a.date, a.title, existing_names(a.existing) if a.existing else [])
+        names = make_candidates(a.date, a.title, existing_names(a.existing) if a.existing else [],
+                                resume=a.resume)
     except ValueError as e:
         print(f"ced_name: {e}", file=sys.stderr)
         return 2

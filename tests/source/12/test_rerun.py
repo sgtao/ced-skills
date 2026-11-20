@@ -6,7 +6,7 @@ import os
 import shutil
 import time
 
-from conftest import GOLDEN_VIDEO, INPUTS, edit, run_script
+from conftest import GOLDEN_VIDEO, INPUTS, default_dest, edit, run_script
 from check_docs import run_checks
 
 FINALS = ["02_explanation_memo.md", "11_question_and_answer.md", "12_LLM_prompts_as_guide.md", "README.md"]
@@ -59,7 +59,7 @@ def test_status_detects_changed_input(tmp_path):
     shutil.copy(INPUTS / "article.md", src)
     p = run_script("scaffold.py", src)
     assert p.returncode == 0, p.stderr
-    dest = tmp_path / "in_explained"
+    dest = default_dest("in")
     r = status(dest)
     assert r["input_changed"] is False
     assert set(r["missing_steps"]) == {"1", "2", "3", "4", "5", "6", "7", "8-A", "8-B", "9"}

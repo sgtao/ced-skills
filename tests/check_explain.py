@@ -190,6 +190,27 @@ def m5_checks(text: str):
     return problems
 
 
+def v3_checks(text: str):
+    """v0.0.3 V3-M2：題と日付（D21）・Web／YouTube の取得（U10）・解説済みの読み飛ばし（U19）・再開（D18）を言っているか（静的）。"""
+    problems = []
+    if "`fetch`" not in text or "01_sources/" not in text:
+        problems.append("collect_sources の「fetch」（Web・YouTube を 01_sources/ に取得）の動きが無い")
+    if "needs_fetch" not in text:
+        problems.append("plan の needs_fetch（URL は取得してから名前を決める）の記述が無い")
+    if "date_source" not in text:
+        problems.append("使った日付と元（date_source）を完了の報告に書く記述が無い")
+    if "head" not in text:
+        problems.append("PDF・Office の先頭（head）から候補を作る記述が無い")
+    if "resumable" not in text or "--resume" not in text:
+        problems.append("同じ入力の既存フォルダを、候補の先頭にする（resumable・--resume）記述が無い")
+    for code in ("ALREADY_EXPLAINED", "ALL_EXPLAINED"):
+        if code not in text:
+            problems.append(f"引数なしの実行で解説済みを飛ばす（{code}）の記述が無い")
+    if "未実装" in text:
+        problems.append("「未実装」の注記が残っている（題・日付の取得は実装済み）")
+    return problems
+
+
 def layout_checks(text: str):
     """explain.md が、出力の形（PLAN.md 4.8）を決めているか。形そのものの検査は check_output_layout.py。"""
     problems = []
@@ -298,6 +319,7 @@ def main() -> int:
     problems += slide_mode_checks()
     problems += layout_checks(EXPLAIN.read_text(encoding="utf-8"))
     problems += m5_checks(EXPLAIN.read_text(encoding="utf-8"))
+    problems += v3_checks(EXPLAIN.read_text(encoding="utf-8"))
     print(f"質問の数（定義）: {nq}（4 問以内）")
     for p in problems:
         print("FAIL:", p)

@@ -40,7 +40,7 @@ import subprocess
 import sys
 import tempfile
 
-from _common import (StopReason, check_env, contract_epilog, fetch,
+from _common import (StopReason, check_env, contract_epilog, extract_html_meta, fetch,
                      find_soffice, format_env, move, read_html_file, run_main,
                      run_soffice, safe_stem, sniff_format, unique_path, write_stdout)
 
@@ -161,6 +161,8 @@ def convert(path, fmt, url=None, content_type="", force=False):
         from html_to_md import absolutize, check_html, to_markdown
         html = read_html_file(path, content_type)  # 文字コードを判定して読む
         check_html(html, force=force)  # ログイン画面・JS 描画らしいときは止める
+        # 題と公開日（D21）を、collect_sources.py fetch が読めるよう、標準エラーに 1 行で出す
+        print("META=" + json.dumps(extract_html_meta(html), ensure_ascii=False), file=sys.stderr)
         if not url:  # 手元のファイルは基点の URL が無いので、相対パスはそのまま残す
             return to_markdown(html, None)
         return to_markdown(absolutize(html, url), url)

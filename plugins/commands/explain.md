@@ -25,16 +25,23 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
 
 値は、渡す前にそろえる。`--slides` は整数、`--audience` は前後の空白を除いて NFKC で正規化した文字列にする。選択肢の「（既定）」などの表示は値に含めない（再実行で同じ入力と判定するため）。
 
-入力が決まったら、`ced-url-to-md` の collection モード（手順 2 の `plan`）で対象を調べる。`plan` は何も書かない。
-その結果（未完了の件数、飛ばしたもの、見積もり）を使って、足りないものを決める。
+入力が URL（Web ページ・YouTube）のときは、先に `collect_sources.py` の `fetch` で、今いるフォルダの `01_sources/YYMMDD_<名前>.md` に取得する（通信する。無料、数秒〜数十秒）。名前を決めるのに題が要るため。`plan` が `needs_fetch: true` を返す入力は、この取得が先に要る。取得したファイルを、以降の入力にする（`plan` をそのファイルでもう一度調べる）。同じ URL を取得済みなら、`fetch` は通信せずに同じファイルを返す（`reused`）。PDF・Office の URL（`FETCH_NOT_PAGE`）は取得せず、これまでどおり URL のまま入力にする。
+
+入力が決まったら、`ced-url-to-md` の collection モード（手順 2 の `plan`）で対象を調べる。`plan` は何も書かない。`--out` があるときは、`plan` に `--parent <親>` を付ける（今いるフォルダに加えて、親の中の解説済み・再開できるフォルダも探させる）。
+その結果（未完了の件数、飛ばしたもの、見積もり、題・日付・先頭、再開できるフォルダ）を使って、足りないものを決める。
 
 **フォルダ名の候補（Q1 の材料）**
-1. 題を 3 つ作る：英訳 2 つと、短い要約 1 つ。題は、`plan` の `name`（ファイルならファイル名、URL・YouTube なら取得した題）から作る。日本語の題は英訳を先に、訳しにくい固有名はローマ字にする。
-2. `python3 <SKILL_DIR>/scripts/ced_name.py --date <YYMMDD> --title "<題1>" --title "<題2>" --title "<題3>" --existing <親>` を実行する。出力は JSON の 3 つの名前（`YYMMDD_<名前>`、40 文字以内、既にあるフォルダは避ける）。
-3. 日付は今は実行した日を使う（公開日・作成日の取得は未実装。`README.md` に、使った日付と元を書く）。
+1. 題を 3 つ作る：英訳 2 つと、短い要約 1 つ。材料は `plan` が返す値を使う。
+   - `title`：ファイルは frontmatter の題・先頭の見出し・ファイル名、取得したファイルは Web・動画の題、2 件以上はフォルダ・ZIP の名前。
+   - PDF・Office は、各項目の `head`（先頭の文字。全文の変換はまだしない）も材料にする。メタデータの題が無いときは、ファイル名と `head` から題を作る。
+   - 日本語の題は英訳を先に、訳しにくい固有名はローマ字にする。
+2. `python3 <SKILL_DIR>/scripts/ced_name.py --date <YYMMDD> --title "<題1>" --title "<題2>" --title "<題3>" --existing <親> [--resume <既存のフォルダ名>]` を実行する。出力は JSON の 3 つの名前（`YYMMDD_<名前>`、40 文字以内）。既にあるフォルダは避ける。
+   - `plan` の `resumable`（同じ入力・同じ指定の枚数と読み手で作った既存の出力フォルダ）があるときは、その `name` を `--resume` に渡す。避けずに候補の先頭に出るので、同じ入力を実行し直しても `-2` にならず、続きから処理できる（再開）。
+3. 日付（`YYMMDD`）は `plan` の `date` を使う。取り方は `date_source` に出る。YouTube は公開日、Web は公開日（`article:published_time`・`datePublished`・`<time>`）、PDF は作成日（`CreationDate`）、Office は作成日（`dcterms:created`）、Markdown は frontmatter の `published`・`date`・`created`。取れないとき、または 1990 年より前・実行した日より後のときは、実行した日（`run_date`）。使った日付と元（`date_source`）は、完了の報告に書く（取得したファイルは、frontmatter の `published`・`date_source` にも残る）。
 
 判定と動き（この順で）:
 1. 入力が決まらないときは、手順 1 の 4 のとおりに止まる。参照元（`01_source`・`01_sources`）が 2 つあるときは、質問なしの実行なら `AMBIGUOUS_SOURCE_DIR` で止まる（Q4 で選ぶのは対話の実行だけ）。
+   `plan` が `all_explained: true` を返したとき（引数なしの実行で、`01_source`・`01_sources` の対象がすべて解説済み）は、質問せず、解説済みの件数（`skipped` の `ALREADY_EXPLAINED`）を報告して止まる（`prepare` なら `ALL_EXPLAINED`）。解説し直すときは、入力を引数で渡してもらう。
 2. `--name`・`--slides`・`--audience` の 3 つがすべて引数にあるときは、**AskUserQuestion を呼ばない（0 回）**。`--name` の値を `<名前>` に使う（`YYMMDD_` を付け、英小文字・数字・`-` に整え、40 文字以内にする。候補は作らない）。`--name` の値が形に合わないときは、候補の 1 つ目を使い、完了の報告に残りの候補を書く。
 3. 1 つでも足りないとき、または Q4 の条件に当たるときは、**足りないものだけを、AskUserQuestion の 1 回の呼び出しにまとめる**。質問は最大 4 問。
    - 質問文・選択肢・説明はすべて日本語で書く。コマンド名やオプション名は原文のままでよい。
@@ -55,6 +62,7 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
 `ced-url-to-md` の collection モード（`workflows/collection.md`）を使う。スクリプトは、そのスキルの `<SKILL_DIR>/scripts/collect_sources.py` にある。他のスキルのフォルダのパスを直接書かない。
 
 1. `plan`：手順 1 の結果を使う（もう一度は調べない）。
+   - 引数なしの実行（入力が `01_source`・`01_sources`）では、解説済み（他の出力フォルダで `done`、中身も同じ）の項目を飛ばす。`skipped` に `ALREADY_EXPLAINED` で残し、ID は残りの項目に振り直す。引数で入力を渡したときは飛ばさない。
 2. `prepare`：`--out-dir <出力先>` と、手順 1 で決めた入力（`--source-dir` を含む）・`--slides`・`--audience`・`--max-files` を渡す。`--limit N` は Q4 で決めた件数だけ渡す。`<出力先>/.work/sources.json` と、解説メモに渡せる Markdown（`<出力先>/.work/md/`）ができる。
    - 文字・コード・字幕は、ここで Markdown になり `prepared` になる。
    - PDF・Office・HTML・URL は `pending` のまま。`ced-url-to-md` の `workflows/file.md`・`url.md`・`youtube.md` の手順で変換し、`mark --status prepared --md-path .work/md/<スラッグ>.md` で記録する。変換できなければ `mark --status failed --reason <理由コード>`。
@@ -93,7 +101,7 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
 
 ### 5. 報告する
 - 2 件以上のときは `00_index.md`（一覧と、飛ばしたもの、止まったもの）を `<出力先>/` の直下に作る（`index`）。全件が終わったときだけでなく、途中で止まるときも作る。
-- 作ったファイルのパス、件数（完了・飛ばした・失敗・未処理）、lint の結果（error／warn の数）、Q1 で使わなかったフォルダ名の候補、未検証のこと（画像の確認など）を 8 行以内で書く。
+- 作ったファイルのパス、件数（完了・飛ばした〔解説済みを含む〕・失敗・未処理）、lint の結果（error／warn の数）、Q1 で使わなかったフォルダ名の候補、未検証のこと（画像の確認など）を 8 行以内で書く。
 - 次の一手として 1 行だけ提案してよい（依頼にない機能は足さない）。
 
 #### 出力の形
@@ -101,7 +109,7 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
 
 ```
 <出力先>/                 YYMMDD_<名前>/
-├── README.md             入力の URL・題・日付の元を記録
+├── README.md             入力の URL・題を記録
 ├── 01_source.md
 ├── 02_explanation_memo.md
 ├── 11_question_and_answer.md

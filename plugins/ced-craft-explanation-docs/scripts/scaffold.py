@@ -9,7 +9,7 @@
   - セクションの候補（見出し・チャプター）と、そのまま貼れる目次の行を JSON で返す
 
 しないこと（LLM の仕事）: 要約・セクション分け・README の概要。ひな形の `{{…}}` のまま残す。
-入力の Markdown は書き換えない。作業フォルダが既にあれば何も書かずに止まる（DEST_EXISTS）。
+入力の Markdown は書き換えない。作業フォルダが既にあれば何も書かずに止まる（DEST_EXISTS。ただし中身が .work/ だけなら、まだ空とみなす）。
 
 使い方:
   python3 scaffold.py <入力.md> [--dest DIR] [--dry-run]
@@ -116,12 +116,28 @@ def suggest_sections(cands: list[dict]) -> tuple[list[dict], str]:
 
 
 # ---- 作業フォルダの名前 ---------------------------------------------------------------
-_UNSAFE = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
+# 既定は、今いるフォルダの直下の YYMMDD_<名前>/（explain の形と同じ。V3-M2）。
+# 名前の決まりは ced-url-to-md の ced_name.py と同じ（他のスキルのファイルは import しないため、ここに持つ。
+# 同じ結果になることは tests/test_name_parity.py で確かめる）。
+NAME_MAX = 40
+NAME_FALLBACK = "source"
 
 
-def default_dest(input_path: Path) -> Path:
-    stem = _UNSAFE.sub("_", input_path.stem).strip(" ._") or "input"
-    return input_path.parent / f"{stem}_explained"
+def default_name(stem: str) -> str:
+    """英小文字・数字・-（それ以外は - にまとめる）、40 文字以内（単語の切れ目で切る）。英字が無ければ source。"""
+    body = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
+    if not re.search(r"[a-z0-9]", body):
+        return NAME_FALLBACK
+    if len(body) > NAME_MAX:
+        k = body[:NAME_MAX + 1].rfind("-")
+        body = body[:k if k > 0 else NAME_MAX].rstrip("-")
+    return body
+
+
+def default_dest(input_path: Path, today=None) -> Path:
+    """既定の作業フォルダ: <今いるフォルダ>/YYMMDD_<名前>/（日付は実行した日）。"""
+    day = today or datetime.now()
+    return Path.cwd() / f"{day:%y%m%d}_{default_name(input_path.stem)}"
 
 
 # ---- 本体 ---------------------------------------------------------------------------
@@ -203,7 +219,8 @@ def build(input_path: Path, dest: Path, dry_run: bool) -> dict:
     body = normalize_body(body_raw)
     if len(body.strip()) < MIN_BODY_CHARS:
         raise StopReason("EMPTY_CONTENT", f"本文が空、または短すぎます（{len(body.strip())} 字）: {input_path}")
-    if dest.exists():
+    # explain は、先に collect_sources.py prepare が <出力先>/.work/ を作る。.work/ だけのフォルダは「まだ空」とみなす
+    if dest.exists() and any(e.name != ".work" for e in dest.iterdir()):
         raise StopReason("DEST_EXISTS", f"作業フォルダが既にあります（何も書きません）: {dest}")
     for w in warns:
         print(f"[warn] {w}", file=sys.stderr)
@@ -277,7 +294,7 @@ def build(input_path: Path, dest: Path, dry_run: bool) -> dict:
 
     files = ["README.md", "01_source.md", "out/00_manifest.json", "out/00_run-report.md"]
     if not dry_run:
-        (dest / "out").mkdir(parents=True)
+        (dest / "out").mkdir(parents=True, exist_ok=True)
         (dest / "README.md").write_text(readme_text, encoding="utf-8", newline="\n")
         (dest / "01_source.md").write_text(source_text, encoding="utf-8", newline="\n")
         (dest / "out" / "00_manifest.json").write_text(
@@ -315,11 +332,13 @@ def main() -> None:
         epilog=contract_epilog(
             ("NO_INPUT", "EMPTY_CONTENT", "MULTI_SOURCE", "DEST_EXISTS"),
             "結果の JSON（dest・profile・title・sections の候補と目次の行など）",
-            notes=["--dest を省くと、入力と同じ場所に <入力ファイル名>_explained/ を作る。",
+            notes=["--dest を省くと、今いるフォルダの直下に YYMMDD_<名前>/ を作る"
+                   "（日付は実行した日。名前は入力のファイル名を、英小文字・数字・- の 40 文字以内にしたもの。"
+                   "英字が無ければ source）。",
                    "作業フォルダが既にあるときは何も書かずに DEST_EXISTS で止まる（上書きしない）。"]))
     ap.add_argument("input", nargs="+", help="入力の Markdown（1 つ）")
     ap.add_argument("--dest", default=None, metavar="DIR",
-                    help="作業フォルダ（省略時は入力の隣の <名前>_explained/）")
+                    help="作業フォルダ（省略時は、今いるフォルダの直下の YYMMDD_<名前>/）")
     ap.add_argument("--dry-run", action="store_true", help="何も書かずに、作る内容だけを JSON で返す")
     args = ap.parse_args()
 

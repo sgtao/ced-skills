@@ -3,6 +3,19 @@
 ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履歴です。版は `plugins/.claude-plugin/plugin.json` の `version` と、Git のタグに合わせます。
 
 ---
+## [Unreleased]（0.0.3 に入れる。版の見出しは V3-M5 で付ける）
+
+### 追加
+- **出力フォルダの名前**：`ced_name.py`（`ced-url-to-md`）が、`YYMMDD_<英小文字・数字・->`（`_` の後ろは 40 文字以内）の候補を 3 つ作る。同じ入力の既存フォルダは `--resume` で先頭の候補にする（再実行で `-2` にならない）
+- **題と日付**：`collect_sources.py plan` が、出力フォルダ名の材料（`title`・`date`・`date_source`・`head`）と、再開できる既存のフォルダ（`resumable`）を返す。日付は、YouTube・Web の公開日、PDF・Office の作成日、Markdown の `published` など。取れなければ実行した日
+- **`collect_sources.py fetch`**：Web ページ・YouTube を、今いるフォルダの `01_sources/YYMMDD_<名前>.md` に取得する。同じ URL は通信せずに同じファイルを返す
+- **解説済みを飛ばす**：引数なしの実行で、他の出力フォルダで `done` の項目を飛ばす（`ALREADY_EXPLAINED`。全部なら `ALL_EXPLAINED`）
+
+### 変更
+- **出力の形**（互換なし）：今いるフォルダの直下の `YYMMDD_<名前>/`（解説メモは直下、スライドは `docs/`）。`explain-out/` と `explained/` はやめた
+- **`ced-craft-explanation-docs` を単独で使ったときの既定の作業フォルダ**：入力の隣の `<名前>_explained/` から、今いるフォルダの直下の `YYMMDD_<名前>/`（スライドは直下の `docs/`）に変えた。理由：`/ced-skills:explain` の形と揃えるため（`--dest` を渡せば、これまでどおり好きな場所に作れる）
+
+---
 ## [0.0.2] - 2026-11-19
 
 ### 追加

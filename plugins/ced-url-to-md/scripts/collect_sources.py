@@ -9,13 +9,18 @@
 
 使い方:
   collect_sources.py plan    [<入力>] [--source-dir DIR] [--cwd DIR] [--out-dir DIR]
-                             [--max-files N] [--slides N] [--audience TEXT]
+                             [--max-files N] [--slides N] [--audience TEXT] [--parent DIR] [--today YYYY-MM-DD]
+  collect_sources.py fetch   <URL> [--cwd DIR] [--today YYYY-MM-DD]
   collect_sources.py prepare [<入力>] [--source-dir DIR] [--cwd DIR] --out-dir DIR
                              [--limit N] [--max-files N] [--slides N] [--audience TEXT]
   collect_sources.py mark    --out-dir DIR --id N --status STATUS [--md-path PATH] [--reason CODE]
   collect_sources.py index   --out-dir DIR
 
-  plan     何も書かず、対象の一覧・出力先の状態・見積もりを JSON で返す。
+  plan     何も書かず、対象の一覧・出力先の状態・見積もりを JSON で返す。出力フォルダ名の元になる
+           題と日付（title・date・date_source）、PDF・Office などの先頭（head）、再開できる既存の
+           出力フォルダ（resumable）、引数なしの実行で飛ばした解説済みの項目（skipped の ALREADY_EXPLAINED）も返す。
+  fetch    Web・YouTube を、今いるフォルダの 01_sources/YYMMDD_<名前>.md に取得する（通信する）。
+           同じ URL を取得済みなら、通信せずにそのファイルを返す（reused）。
   prepare  展開と Markdown への包みを行い、<出力先>/.work/sources.json を書く。
   mark     1 件の状態を進める（pending → prepared → docs_done → done。どこからでも failed）。
   index    2 件以上のとき、<出力先>/00_index.md を作る。
@@ -30,17 +35,24 @@ import codecs
 import datetime
 import fnmatch
 import hashlib
+import io
 import json
 import os
 import re
 import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 import unicodedata
 import zipfile
+import zlib
+from html import unescape as html_unescape
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlparse
 
-from _common import StopReason, run_main
+from _common import StopReason, check_scheme, extract_html_meta, run_main
+from ced_name import FALLBACK as FALLBACK_NAME, MAX_BODY as MAX_NAME_BODY, cut, slugify
 
 SCHEMA = 1
 DEFAULT_MAX_FILES = 5
@@ -359,7 +371,7 @@ def scan_single(p: Path) -> tuple[list[dict], list[dict]]:
 
 
 def scan_url(url: str) -> dict:
-    yt = "youtube" in url and bool(re.search(r"(?:v=|youtu\.be/)", url))
+    yt = is_youtube(url)
     text = url
     return {"path": url, "slug_src": input_name_of(url), "kind": "url",
             "route": "youtube" if yt else "url", "source_format": None, "text": None,
@@ -417,7 +429,7 @@ def out_state(out_dir: Path | None, key: str, phash: str) -> tuple[str, dict | N
     if not sj.is_file():
         return "conflict", None
     prev = json.loads(sj.read_text(encoding="utf-8"))
-    if prev.get("input") == key and prev.get("params_sha256") == phash:
+    if same_input(prev.get("input"), key) and prev.get("params_sha256") == phash:
         return "resume", prev
     return "conflict", prev
 
@@ -431,6 +443,7 @@ def build_items(entries: list[dict], prev: dict | None) -> list[dict]:
     for n, (e, slug) in enumerate(zip(entries, slugs), 1):
         item = {"id": n, "slug": slug, "path": e["path"], "kind": e["kind"], "route": e["route"],
                 "source_format": e["source_format"], "sha256": e["sha256"], "origin": e["origin"],
+                "zip_rel": e.get("zip_rel"),
                 "over_estimate": e["over_estimate"], "md_path": None, "file": e["disk"],
                 "status": "pending", "stage": None, "reason": None, "_text": e["text"],
                 "_member": e["member"]}
@@ -592,6 +605,553 @@ def extract_zips(out_dir: Path, base_dir: Path, entries: list[dict]) -> dict:
     return failed
 
 
+# ---- 題と日付（D21）・PDF／Office の先頭の抜き出し（U15）---------------------------------
+HEAD_CHARS = 200
+META_READ_MAX = 50 * 1024 * 1024
+MAX_META_ITEMS = 30
+DATE_MIN_YEAR = 1990
+DATE_RE = re.compile(r"(\d{4})[-/.年]?(\d{1,2})[-/.月]?(\d{1,2})")
+CONVERT_TIMEOUT = 300
+PAGE_EXT_EXCLUDED = CONVERT_EXT - {".html", ".htm", ".xhtml"}
+
+
+def today_of(args) -> datetime.date:
+    t = getattr(args, "today", None)
+    if not t:
+        return datetime.date.today()
+    try:
+        return datetime.date.fromisoformat(t)
+    except ValueError:
+        raise StopReason("BAD_ARGS", f"--today は YYYY-MM-DD の形で指定する: {t}", exit_code=2)
+
+
+def ymd(d: datetime.date) -> str:
+    return d.strftime("%y%m%d")
+
+
+def parse_date(raw) -> datetime.date | None:
+    if not raw:
+        return None
+    m = DATE_RE.search(str(raw))
+    if not m:
+        return None
+    try:
+        return datetime.date(*(int(g) for g in m.groups()))
+    except ValueError:
+        return None
+
+
+def resolve_date(cands, today: datetime.date) -> tuple[str, str]:
+    """(値, 元) の候補を順に見て、妥当な最初の日付を (YYMMDD, 元) で返す。無ければ実行した日（D21）。
+
+    妥当とは、1990 年以降で、実行した日より後ではないこと。
+    """
+    for raw, source in cands:
+        d = parse_date(raw)
+        if d and d.year >= DATE_MIN_YEAR and d <= today:
+            return ymd(d), source
+    return ymd(today), "run_date"
+
+
+def compact(text: str, n: int = HEAD_CHARS) -> str:
+    return re.sub(r"\s+", " ", text).strip()[:n]
+
+
+def parse_frontmatter(text: str) -> tuple[dict, str]:
+    m = re.match(r"---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)", text, re.S)
+    if not m:
+        return {}, text
+    fm = {}
+    for line in m.group(1).splitlines():
+        k, sep, v = line.partition(":")
+        if not sep or not k.strip() or k[:1].isspace():
+            continue
+        v = v.strip()
+        if v[:1] in ('"', "'") and v[-1:] == v[:1] and len(v) >= 2:
+            try:
+                v = json.loads(v) if v[0] == '"' else v[1:-1]
+            except ValueError:
+                v = v[1:-1]
+        fm[k.strip()] = v
+    return fm, text[m.end():]
+
+
+def _meta(title, title_source, date_cands, head, today) -> dict:
+    date, date_source = resolve_date(date_cands, today)
+    return {"title": title, "title_source": title_source, "date": date,
+            "date_source": date_source, "head": head}
+
+
+def meta_text(text: str, stem: str, today: datetime.date, heading: bool = True) -> dict:
+    """テキスト・コード・Markdown。題は frontmatter の title → 先頭の見出し（コメント）→ ファイル名。"""
+    fm, body = parse_frontmatter(text)
+    title, tsrc = None, "filename"
+    if fm.get("title"):
+        title, tsrc = fm["title"], "frontmatter"
+    elif heading:  # コードの `# コメント` は、題にしない
+        m = re.search(r"^#{1,6}\s+(.+?)\s*$", body, re.M)
+        if m:
+            title, tsrc = m.group(1), "heading"
+    dates = [(fm[k], f"frontmatter:{k}") for k in ("published", "date", "created") if fm.get(k)]
+    return _meta(title or stem, tsrc, dates, compact(body), today)
+
+
+PDF_STR = rb"(\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]*>)"
+_PDF_ESC = {ord("n"): 10, ord("r"): 13, ord("t"): 9, ord("b"): 8, ord("f"): 12,
+            ord("("): 40, ord(")"): 41, ord("\\"): 92}
+
+
+def _pdf_decode(b: bytes) -> str:
+    if b.startswith(b"\xfe\xff"):
+        return b[2:].decode("utf-16-be", "replace")
+    if b.startswith(b"\xef\xbb\xbf"):
+        return b[3:].decode("utf-8", "replace")
+    return b.decode("latin-1")
+
+
+def _pdf_string(tok: bytes) -> str:
+    """PDF の文字列（(…) か <…>）を、Python の文字列にする。"""
+    if tok[:1] == b"<":
+        hexs = re.sub(rb"\s+", b"", tok[1:-1])
+        if len(hexs) % 2:
+            hexs += b"0"
+        return _pdf_decode(bytes.fromhex(hexs.decode("ascii")))
+    raw, out, i = tok[1:-1], bytearray(), 0
+    while i < len(raw):
+        c = raw[i]
+        if c == 0x5C and i + 1 < len(raw):
+            n = raw[i + 1]
+            if n in _PDF_ESC:
+                out.append(_PDF_ESC[n])
+                i += 2
+            elif 48 <= n <= 55:
+                j = i + 1
+                while j < len(raw) and j < i + 4 and 48 <= raw[j] <= 55:
+                    j += 1
+                out.append(int(raw[i + 1:j], 8) & 0xFF)
+                i = j
+            else:
+                i += 2  # 行の継続など
+            continue
+        out.append(c)
+        i += 1
+    return _pdf_decode(bytes(out))
+
+
+PDF_MAX_STREAMS = 400                 # 調べるストリームの数（先頭から）
+PDF_MAX_BLOB = 4 * 1024 * 1024        # 1 つのストリームを展開して読む大きさの上限
+PDF_TAIL = 1024 * 1024                # 情報辞書を探すとき、ファイルの末尾から読む大きさ
+
+
+def _pdf_blobs(data: bytes):
+    """(展開した) ストリームを、ファイルの順に返す。展開できないものは、そのまま返す。
+
+    悪意のある PDF でも終わるよう、数と大きさに上限を置き、検索は bytes.find だけで行う（線形）。
+    """
+    pos, n = 0, 0
+    while n < PDF_MAX_STREAMS:
+        a = data.find(b"stream", pos)
+        if a < 0:
+            return
+        start = a + len(b"stream")
+        if data[start:start + 2] == b"\r\n":
+            start += 2
+        elif data[start:start + 1] == b"\n":
+            start += 1
+        else:
+            pos = start
+            continue
+        end = data.find(b"endstream", start)
+        if end < 0:
+            return
+        n += 1
+        pos = end + len(b"endstream")
+        body = data[start:end]
+        try:
+            blob = zlib.decompressobj().decompress(body, PDF_MAX_BLOB)
+        except zlib.error:
+            blob = body[:PDF_MAX_BLOB]
+        yield blob
+
+
+def _pdf_info_dict(data: bytes) -> bytes | None:
+    """情報辞書（/Title・/CreationDate）。末尾の /Info の参照から探し、無ければ /CreationDate を含む辞書。"""
+    tail = data[-PDF_TAIL:]
+    m = re.search(rb"/Info\s+(\d+)\s+\d+\s+R", tail)
+    if m:
+        head = m.group(1) + b" 0 obj"
+        a = data.rfind(head)
+        if a >= 0:
+            b = data.find(b"endobj", a)
+            return data[a:b if b >= 0 else a + 4096][:8192]
+    a = tail.find(b"/CreationDate")
+    if a < 0:
+        a = data[:PDF_TAIL].find(b"/CreationDate")
+        tail = data[:PDF_TAIL]
+    if a < 0:
+        return None
+    lo = tail.rfind(b"<<", 0, a)
+    hi = tail.find(b">>", a)
+    return tail[lo if lo >= 0 else max(0, a - 2048):hi + 2 if hi >= 0 else a + 2048][:8192]
+
+
+def _pdf_first_page_text(data: bytes) -> str:
+    """最初の内容ストリームの文字（Tj・TJ）を拾う。ひらがななどの CID フォントは読めず、空になる。"""
+    for blob in _pdf_blobs(data):
+        if not re.search(rb"\bBT\b", blob):
+            continue
+        parts = []
+        for m in re.finditer(rb"\[([^\]]{0,4000})\]\s*TJ|(\((?:\\.|[^\\()]){0,4000}\))\s*Tj", blob):
+            if m.group(2):
+                parts.append(_pdf_string(m.group(2)))
+            else:
+                parts.append("".join(_pdf_string(t) for t in re.findall(rb"\((?:\\.|[^\\()])*\)", m.group(1))))
+        text = compact(" ".join(parts))
+        if text:
+            printable = sum(1 for c in text if c.isprintable())
+            return text if printable / len(text) >= 0.7 else ""
+    return ""
+
+
+def _pdftotext_head(data: bytes) -> str:
+    exe = shutil.which("pdftotext")
+    if not exe:
+        return ""
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "in.pdf"
+        p.write_bytes(data)
+        try:
+            r = subprocess.run([exe, "-f", "1", "-l", "1", "-enc", "UTF-8", str(p), "-"],
+                               capture_output=True, timeout=20)
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+    return compact(r.stdout.decode("utf-8", "replace")) if r.returncode == 0 else ""
+
+
+def meta_pdf(data: bytes, stem: str, today: datetime.date) -> dict:
+    title, dates = None, []
+    info = _pdf_info_dict(data)
+    if info:
+        m = re.search(rb"/Title\s*" + PDF_STR, info)
+        if m:
+            title = compact(_pdf_string(m.group(1))) or None
+        m = re.search(rb"/CreationDate\s*\(([^)]*)\)", info)
+        if m:
+            dates.append((m.group(1).decode("latin-1"), "pdf:CreationDate"))
+    head = _pdf_first_page_text(data) or _pdftotext_head(data)
+    return _meta(title or stem, "metadata" if title else "filename", dates, head, today)
+
+
+def _xml_texts(xml: str, tag: str, limit: int = HEAD_CHARS) -> str:
+    out, n = [], 0
+    for m in re.finditer(rf"<{tag}(?:\s[^>]*)?>(.*?)</{tag}>", xml, re.S):
+        t = html_unescape(m.group(1)).strip()
+        if t:
+            out.append(t)
+            n += len(t)
+            if n >= limit:
+                break
+    return compact(" ".join(out))
+
+
+def meta_office(data: bytes, ext: str, stem: str, today: datetime.date) -> dict:
+    title, dates, head = None, [], ""
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        def read(name):
+            try:
+                info = zf.getinfo(name)
+            except KeyError:
+                return ""
+            return zf.read(info).decode("utf-8", "replace") if info.file_size <= 20 * 1024 * 1024 else ""
+        core = read("docProps/core.xml")
+        m = re.search(r"<dc:title>(.*?)</dc:title>", core, re.S)
+        if m and html_unescape(m.group(1)).strip():
+            title = compact(html_unescape(m.group(1)))
+        m = re.search(r"<dcterms:created[^>]*>(.*?)</dcterms:created>", core, re.S)
+        if m:
+            dates.append((m.group(1).strip(), "office:dcterms:created"))
+        if ext == ".docx":
+            head = _xml_texts(read("word/document.xml"), "w:t")
+        elif ext == ".pptx":
+            head = _xml_texts(read("ppt/slides/slide1.xml"), "a:t")
+        elif ext == ".xlsx":
+            head = _xml_texts(read("xl/sharedStrings.xml"), "t")
+    return _meta(title or stem, "metadata" if title else "filename", dates, head, today)
+
+
+def meta_html(data: bytes, stem: str, today: datetime.date) -> dict:
+    text, _ = decode_text(data)
+    text = text if text is not None else data.decode("utf-8", "replace")
+    m = extract_html_meta(text)
+    body = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", text)
+    body = html_unescape(TAG_RE.sub(" ", body))
+    dates = [(m["date"], f"html:{m['date_source']}")] if m["date"] else []
+    return _meta(m["title"] or stem, "metadata" if m["title"] else "filename", dates, compact(body), today)
+
+
+def entry_bytes(cand: dict, e: dict) -> bytes | None:
+    """項目の中身を読む（大きすぎるものは読まない）。ZIP の中のものも、展開せずに読む。"""
+    if e["origin"] == "dir":
+        p = Path(e["disk"])
+        return p.read_bytes() if p.stat().st_size <= META_READ_MAX else None
+    base = Path(cand["root"]) if cand["kind"] == "file" else Path(cand["root"]) / e["zip_rel"]
+    with zipfile.ZipFile(base) as zf:
+        for info in zf.infolist():
+            if _zip_name(info).replace("\\", "/") == e["member"]:
+                return zf.read(info) if info.file_size <= META_READ_MAX else None
+    return None
+
+
+def meta_of_entry(cand: dict, e: dict, today: datetime.date) -> dict:
+    """1 件の題・日付・先頭。読めなければ、ファイル名と実行した日にする（止めない）。"""
+    name = PurePosixPath(e["path"]).name
+    stem, ext = PurePosixPath(name).stem, PurePosixPath(name).suffix.lower()
+    fallback = _meta(stem, "filename", [], "", today)
+    if e.get("origin") == "url":
+        return fallback
+    try:
+        if e.get("text") is not None:
+            return meta_text(e["text"], stem, today, heading=e.get("kind") != "code")
+        data = entry_bytes(cand, e)
+        if data is None:
+            return fallback
+        if ext == ".pdf":
+            return meta_pdf(data, stem, today)
+        if ext in (".docx", ".pptx", ".xlsx"):
+            return meta_office(data, ext, stem, today)
+        if ext in (".html", ".htm", ".xhtml"):
+            return meta_html(data, stem, today)
+    except Exception:  # noqa: BLE001 - 壊れたファイルでも plan は止めない
+        pass
+    return fallback
+
+
+def candidate_meta(cand: dict, items: list[dict], today: datetime.date) -> dict:
+    """出力フォルダ名の元になる題と日付。1 件ならその件の値、2 件以上ならフォルダ・ZIP の名前と実行した日（U14）。"""
+    if cand["kind"] == "url":
+        return {"title": None, "date": ymd(today), "date_source": "run_date", "needs_fetch": True}
+    if len(items) == 1 and items[0].get("title"):
+        i = items[0]
+        return {"title": i["title"], "date": i["date"], "date_source": i["date_source"]}
+    return {"title": cand["name"], "date": ymd(today), "date_source": "run_date"}
+
+
+# ---- 他の出力フォルダとの突き合わせ：解説済みの読み飛ばし（U19・D20）・再開の候補（D18）---------------
+def same_input(a, b) -> bool:
+    if not a or not b:
+        return False
+    if re.match(r"^https?://", str(a)) or re.match(r"^https?://", str(b)):
+        return a == b
+    try:
+        return Path(a).resolve() == Path(b).resolve()
+    except OSError:
+        return a == b
+
+
+def sibling_outputs(bases, exclude: Path | None = None) -> list[tuple[Path, dict]]:
+    """bases の直下にある出力フォルダ（.work/sources.json があるもの）と、その記録。exclude は数えない。"""
+    seen, out = set(), []
+    for base in bases:
+        if base is None or not base.is_dir():
+            continue
+        for child in sorted(base.iterdir()):
+            if not child.is_dir() or child.is_symlink():
+                continue
+            r = child.resolve()
+            if r in seen or (exclude is not None and r == exclude):
+                continue
+            sj = child / ".work" / "sources.json"
+            if not sj.is_file():
+                continue
+            try:
+                data = json.loads(sj.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            seen.add(r)
+            out.append((child, data))
+    return out
+
+
+def _zip_base(root: Path) -> Path:
+    return root if root.is_dir() else root.parent
+
+
+def stored_identity(data: dict, item: dict):
+    """前の実行の項目が、どのファイル（ZIP なら、どの ZIP のどの項目）かを表す値。分からなければ None。"""
+    if item.get("origin") == "zip" and item.get("zip_rel"):
+        zp = (_zip_base(Path(data.get("input", ""))) / item["zip_rel"]).resolve()
+        return ("z", str(zp), item["path"][len(item["zip_rel"]) + 1:])
+    if item.get("origin") == "dir" and item.get("file"):
+        return ("f", str(Path(item["file"]).resolve()))
+    return None
+
+
+def entry_identity(cand: dict, e: dict):
+    if e.get("origin") == "zip":
+        zp = (_zip_base(Path(cand["root"])) / e["zip_rel"]).resolve()
+        return ("z", str(zp), e["member"])
+    if e.get("origin") == "dir" and e.get("disk"):
+        return ("f", str(Path(e["disk"]).resolve()))
+    return None
+
+
+def search_bases(args, out_dir: Path | None) -> list[Path]:
+    """他の出力フォルダを探す場所：今いるフォルダ、--parent（--out の親）、出力先の親。"""
+    bases = [Path(args.cwd).resolve()]
+    if getattr(args, "parent", None):
+        bases.append(Path(args.parent).resolve())
+    if out_dir is not None:
+        bases.append(out_dir.parent)
+    return bases
+
+
+def split_explained(args, cand: dict, entries: list[dict], out_dir: Path | None):
+    """引数なしの実行で、解説済み（他の出力フォルダで done、中身も同じ）の項目を分ける。
+
+    自分の出力先（out_dir）は数えない。再開では、done の記録を前の sources.json から引き継ぐため。
+    """
+    if args.input or not entries:
+        return entries, []
+    exclude = out_dir.resolve() if out_dir is not None else None
+    done = set()
+    for _, data in sibling_outputs(search_bases(args, out_dir), exclude):
+        for it in data.get("items", []):
+            if it.get("status") == "done":
+                ident = stored_identity(data, it)
+                if ident:
+                    done.add((ident, it.get("sha256")))
+    keep, skipped = [], []
+    for e in entries:
+        ident = entry_identity(cand, e)
+        if ident and (ident, e["sha256"]) in done:
+            skipped.append({"path": e["path"], "reason": "ALREADY_EXPLAINED"})
+        else:
+            keep.append(e)
+    return keep, skipped
+
+
+def resumable_of(args, cand: dict, out_dir: Path | None, phash: str) -> list[dict]:
+    """同じ入力・同じ指定（枚数・読み手）で作った既存の出力フォルダ。名前の候補の先頭に出す（D18）。
+
+    引数なしの実行では、未完了の項目があるフォルダだけ（全件が done のフォルダは、解説済みとして飛ばす側）。
+    """
+    key = input_key(cand)
+    out = []
+    for child, data in sibling_outputs(search_bases(args, out_dir)):
+        if same_input(data.get("input"), key) and data.get("params_sha256") == phash:
+            counts = {}
+            for it in data.get("items", []):
+                counts[it["status"]] = counts.get(it["status"], 0) + 1
+            # 引数なしの実行で、全件が done のフォルダを勧めると、別の新しい項目が解説済みのフォルダに混ざる
+            if not args.input and not any(st != "done" for st in counts):
+                continue
+            out.append({"name": child.name, "dir": str(child), "counts": counts})
+    return out
+
+
+# ---- 取得（U10）：Web・YouTube を 01_sources/ に置く ---------------------------------------
+def is_youtube(url: str) -> bool:
+    return ("youtube.com" in url or "youtu.be" in url) and bool(re.search(r"(?:v=|youtu\.be/|shorts/|live/|embed/)", url))
+
+
+def run_converter(route: str, url: str, out_md: Path) -> str:
+    """youtube_to_md.py か fetch_convert.py を走らせ、標準エラーの文字列を返す（通信する）。"""
+    script = Path(__file__).resolve().parent / ("youtube_to_md.py" if route == "youtube" else "fetch_convert.py")
+    runner = ["uv", "run", "--quiet"] if shutil.which("uv") else [sys.executable]
+    cmd = runner + [str(script), url, "-o", str(out_md)]
+    if route != "youtube":
+        cmd += ["--route", "direct"]
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=CONVERT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise StopReason("FETCH_FAILED", f"取得が {CONVERT_TIMEOUT} 秒で終わらなかった: {url}")
+    err = r.stderr.decode("utf-8", "replace")
+    if r.returncode != 0:
+        code = next((ln.split("=", 1)[1].strip() for ln in err.splitlines() if ln.startswith("REASON=")),
+                    "FETCH_FAILED")
+        why = next((ln[len("[stop] "):] for ln in err.splitlines() if ln.startswith("[stop] ")),
+                   next((ln for ln in err.splitlines() if ln.startswith("[error]")), "取得に失敗した"))
+        raise StopReason(code, f"{why}: {url}")
+    if not out_md.is_file() or not out_md.read_text(encoding="utf-8").strip():
+        raise StopReason("EMPTY_CONTENT", f"取得した本文が空だった: {url}")
+    return err
+
+
+def _first_heading(md: str) -> str | None:
+    m = re.search(r"^#\s+(.+?)\s*$", md, re.M)
+    return m.group(1) if m else None
+
+
+def find_fetched(src_dir: Path, url: str) -> Path | None:
+    """同じ URL を取得済みのファイル（frontmatter の source_url が同じ）。"""
+    if not src_dir.is_dir():
+        return None
+    for f in sorted(src_dir.glob("*.md")):
+        try:
+            head = f.read_text(encoding="utf-8")[:4096]
+        except (OSError, UnicodeDecodeError):
+            continue
+        if parse_frontmatter(head)[0].get("source_url") == url:
+            return f
+    return None
+
+
+def cmd_fetch(args) -> dict:
+    url = args.url
+    check_scheme(url)
+    if PurePosixPath(urlparse(url).path).suffix.lower() in PAGE_EXT_EXCLUDED:
+        raise StopReason("FETCH_NOT_PAGE", f"Web ページでも YouTube でもない（PDF・Office のファイル）: {url}",
+                         next_step="この URL は取得せず、そのまま入力に渡してください（変換は prepare のあとで行います）。")
+    cwd = Path(args.cwd).resolve()
+    src_dir = cwd / "01_sources"
+    old = find_fetched(src_dir, url)
+    if old is not None:
+        fm, _ = parse_frontmatter(old.read_text(encoding="utf-8"))
+        return {"path": str(old), "name": old.stem, "title": fm.get("title") or old.stem,
+                "date": old.stem[:6], "date_source": fm.get("date_source", "run_date"), "reused": True}
+    today = today_of(args)
+    route = "youtube" if is_youtube(url) else "web"
+    with tempfile.TemporaryDirectory() as td:
+        out_md = Path(td) / "body.md"
+        err = run_converter(route, url, out_md)
+        body = out_md.read_text(encoding="utf-8")
+    if route == "youtube":
+        m = re.search(r"published='(\d{4}-\d{2}-\d{2})'", err)
+        title = _first_heading(body)
+        date_cands = [(m.group(1), "youtube:upload_date")] if m else []
+        fmt = "youtube"
+    else:
+        meta = {}
+        for line in err.splitlines():
+            if line.startswith("META="):
+                try:
+                    meta = json.loads(line[5:])
+                except ValueError:
+                    meta = {}
+        title = meta.get("title") or _first_heading(body)
+        date_cands = [(meta.get("date"), meta.get("date_source") or "html")] if meta.get("date") else []
+        fmt = "html"
+    date, date_source = resolve_date(date_cands, today)
+    title = title or input_name_of(url)
+    stem = cut(slugify(title)) or FALLBACK_NAME
+    name, n = f"{date}_{stem}", 1
+    while (src_dir / f"{name}.md").exists():
+        n += 1
+        suffix = f"-{n}"
+        name = f"{date}_{cut(stem, MAX_NAME_BODY - len(suffix))}{suffix}"
+    lines = ["---", f"title: {json.dumps(title, ensure_ascii=False)}",
+             f"source_url: {json.dumps(url, ensure_ascii=False)}", f"source_format: {fmt}"]
+    if date_source != "run_date":
+        lines.append(f"published: {parse_date(date_cands[0][0]).isoformat()}")
+    lines += [f"date_source: {date_source}",
+              f"retrieved_at: {datetime.datetime.now().astimezone().isoformat(timespec='seconds')}", "---", ""]
+    src_dir.mkdir(parents=True, exist_ok=True)
+    path = src_dir / f"{name}.md"
+    path.write_text("\n".join(lines) + "\n" + body.rstrip("\n") + "\n", encoding="utf-8", newline="\n")
+    return {"path": str(path), "name": name, "title": title, "date": date, "date_source": date_source,
+            "reused": False}
+
+
 # ---- 出力 ----------------------------------------------------------------------------
 def write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -609,6 +1169,7 @@ def load_sources(out_dir: Path) -> dict:
 def cmd_plan(args) -> dict:
     cands = candidates(args)
     out_root = Path(args.out_dir).resolve() if args.out_dir else None
+    today = today_of(args)
     result = {"max_files": args.max_files, "candidates": []}
     for cand in cands:
         entries, skipped = scan(cand)
@@ -616,12 +1177,21 @@ def cmd_plan(args) -> dict:
         # v0.0.3：出力先（YYMMDD_<名前>/）は Q1 のあとに決まる。決まるまでは --out-dir を付けず、状態は「new」
         out_dir = out_root
         state, prev = out_state(out_dir, input_key(cand), phash)
+        entries, explained = split_explained(args, cand, entries, out_dir)
+        skipped = skipped + explained
         items = build_items(entries, prev if state == "resume" else None)
+        metas = {}
+        if cand["kind"] != "url" and len(entries) <= MAX_META_ITEMS:
+            metas = {e["path"]: meta_of_entry(cand, e, today) for e in entries}
+        public_items = [{**public(i), **metas.get(i["path"], {})} for i in items]
         pend = pending_count(items)
         result["candidates"].append({
             "kind": cand["kind"], "root": cand["root"], "name": cand["name"],
+            **candidate_meta(cand, public_items, today),
             "out": {"dir": str(out_dir) if out_dir else None, "state": state},
-            "items": [public(i) for i in items], "skipped": skipped,
+            "resumable": resumable_of(args, cand, out_dir, phash),
+            "items": public_items, "skipped": skipped,
+            "all_explained": bool(explained) and not items,
             "pending": pend, "needs_choice": pend > args.max_files,
             "estimate": {"items": pend, "usd": [round(1.27 * pend, 2), round(2.07 * pend, 2)],
                          "minutes": [4 * pend, 9 * pend]},
@@ -644,6 +1214,11 @@ def cmd_prepare(args) -> dict:
         raise StopReason("OUTPUT_CONFLICT", "出力先に別の入力・指定の記録がある",
                          next_step="別の出力先を --out で指定して、もう一度実行してください。")
     entries, skipped = scan(cand)
+    entries, explained = split_explained(args, cand, entries, out_dir)
+    skipped += explained
+    if explained and not entries:
+        raise StopReason("ALL_EXPLAINED", "対象は、すべて解説済み（他の出力フォルダで done）",
+                         next_step="新しい入力を指定するか、解説し直すときは入力を引数で渡してください。")
     items = build_items(entries, prev if state == "resume" else None)
     if not items:
         raise StopReason("NO_SOURCE_FILES", "読める対象が 0 件（飛ばした理由は sources.json の skipped）")
@@ -749,12 +1324,18 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--source-dir", help="参照元のフォルダ")
         p.add_argument("--cwd", default=os.getcwd(), help="今いるフォルダ（既定は現在の場所）")
         p.add_argument("--out-dir", required=out_required, help="出力先")
+        p.add_argument("--parent", help="出力先の親フォルダ（explain の --out）。解説済み・再開の候補を、今いるフォルダに加えてここでも探す")
         p.add_argument("--max-files", type=int, default=DEFAULT_MAX_FILES)
         p.add_argument("--slides", type=int, default=6)
         p.add_argument("--audience", default="初めて読む人")
+        p.add_argument("--today", help="実行した日として使う日付（YYYY-MM-DD。検査用。省略時は今日）")
 
     p = sub.add_parser("plan")
     common(p, out_required=False)
+    p = sub.add_parser("fetch")
+    p.add_argument("url", help="Web ページか YouTube の URL")
+    p.add_argument("--cwd", default=os.getcwd(), help="今いるフォルダ（既定は現在の場所）")
+    p.add_argument("--today", help="実行した日として使う日付（YYYY-MM-DD。検査用。省略時は今日）")
     p = sub.add_parser("prepare")
     common(p, out_required=True)
     p.add_argument("--limit", type=int, help="相対パスの昇順で先頭から N 件を処理する")
@@ -771,7 +1352,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    fn = {"plan": cmd_plan, "prepare": cmd_prepare, "mark": cmd_mark, "index": cmd_index}[args.cmd]
+    fn = {"plan": cmd_plan, "fetch": cmd_fetch, "prepare": cmd_prepare, "mark": cmd_mark,
+          "index": cmd_index}[args.cmd]
     result = fn(args)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
