@@ -248,7 +248,6 @@ ced-skills/
 ├── CHANGELOG.md                        変更履歴（版ごとの追加・変更・修正と、未検証のこと）
 ├── docs/instructions.md                総合インストラクションの例（貼り付け用）
 ├── scripts/install.sh                  スキルを、ツールごとの skills フォルダへ直接入れる・外す
-├── scripts/sync_skills.py              元のリポジトリから複製し、名前を置き換える
 ├── scripts/build_explain_skill.py      explain.md から adapters/ced-explain を生成する
 └── tests/                              合格条件の検査
 ```
@@ -257,22 +256,19 @@ ced-skills/
 
 元の名前のスキル（`url-to-md`・`pdf-to-md-ja`・`craft-explanation-docs`・`websearch-slide-ja`）が `~/.claude/skills` に入っていると、同じ言葉に両方が反応します。`ced-` の接頭辞で名前は区別されますが、起動の言葉は同じです。
 
-- 元のリポジトリの `install.sh --uninstall` を使う、または
 - 手で `~/.claude/skills/<名前>` のフォルダを消す
 
 このリポジトリの `install.sh --uninstall` が消すのは `ced-` の 4 つだけで、元の名前のスキルには触りません。
 
-## 複製と更新
+## 開発の仕方
 
-スキルは元のリポジトリ（開発用の `01_sources`）から複製しています（`scripts/sync_skills.py`）。この GitHub のリポジトリだけを取得した場合、`01_sources` は無いので、この操作はできません。
+このリポジトリが、スキルの唯一の正です。直すときは `plugins/ced-*/` を直接直します（元のリポジトリ 11・12・13 は DEPRECATED で、もう使いません）。
 
-```bash
-python3 scripts/sync_skills.py            # 元から複製し直す（ced- を付ける）
-python3 scripts/sync_skills.py --check    # 複製が、元に名前の置き換えを当てた結果と一致するか確かめる
-python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
-```
-
-直したいときは、元のリポジトリで直してから、この `sync_skills.py` で取り込みます。複製の中を直接書き換えないでください。
+- **直す場所**：`plugins/ced-*/`（スキル）、`plugins/commands/explain.md`（総合インストラクション。`adapters/ced-explain/SKILL.md` は `python3 scripts/build_explain_skill.py` で作り直す。手で直さない）
+- **テストの走らせ方**：`bash tests/run_all.sh`。元のテスト（`tests/source/11`・`tests/source/12`）は、フォルダごとに別プロセスで走る（同じ名前のモジュールを使うため）。依存は `pyproject.toml`・`uv.lock`（`uv` で実行。配布物には入らない）
+- **単独の確かめ**：`bash tests/check_standalone.sh` は、元の資料フォルダを置かない一時フォルダに、コミット済みの内容をクローンして全テストを走らせる。配布される形だけで通ることを確かめるとき使う（コミット前は `--worktree` で作業ツリーを確かめる）
+- **版の上げ方**：`plugins/.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json`・`CHANGELOG.md`・タグを同じ版にそろえる（`python3 tests/check_readme.py --only changelog` で確かめる）
+- **来歴**：0.0.2 までは元のリポジトリ（11・12・13）から複製していた。移した経緯は `CHANGELOG.md` に書く
 
 ## テスト
 
@@ -280,9 +276,9 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 |---|---|
 | プラグインの検査（validate、警告 0） | `bash tests/check_plugin.sh` |
 | 一時の設定で入れて、5 つ（スキル 4・コマンド 1）が認識される | `bash tests/test_plugin_install.sh` |
-| 複製が元と一致する | `python3 scripts/sync_skills.py --check` |
+| 全テスト（元のテストを含む） | `bash tests/run_all.sh` |
+| 元の資料フォルダを置かない場所で全テストが通る | `bash tests/check_standalone.sh` |
 | install.sh（4 ツールと all、2 つのスコープ、--uninstall、--dry-run、ced-explain の配置） | `python3 tests/test_install.py` |
-| 元のテスト（11・12）を複製に向けて実行 | `bash tests/run_source_tests.sh`（外すものは `tests/source-exclusions.txt`） |
 | YouTube の字幕の選択（地域付きの言語コード en-US を含む） | `python3 tests/test_caption_track.py` |
 | explain の質問・出力の形・入力の決め方（静的検査。`--stream` で E2E の記録も見る） | `python3 tests/check_explain.py` と `python3 tests/test_check_explain.py` |
 | ced-explain が生成結果と一致し、禁止した語句が無い | `python3 tests/check_portable.py` と `python3 scripts/build_explain_skill.py --check` |
@@ -291,9 +287,7 @@ python3 scripts/sync_skills.py --list     # 置き換えた箇所を一覧する
 | 実際の出力の形 | `python3 tests/check_output_layout.py <出力フォルダ>` |
 | E2E（HTML・PDF・YouTube の出力）の検査（形も含む） | `python3 tests/e2e_check.py <出力フォルダ>` |
 
-入力の前処理（`collect_sources.py`）の検査は、元のリポジトリ 11 の `tests/test_collect_sources.py` にあり、`run_source_tests.sh` が複製に向けて実行します。
-
-`sync_skills.py` と `run_source_tests.sh` は、元のリポジトリ（開発用の `01_sources`）が隣にあるときだけ動きます。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
+入力の前処理（`collect_sources.py`）の検査は `tests/source/11/test_collect_sources.py` にあります。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
 ## 対応ツール
 

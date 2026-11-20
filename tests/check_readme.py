@@ -64,7 +64,7 @@ def check_targets(text: str):
 
 # README の開発者向けの節に載せるもの（実在するものだけを書く。無ければ載せない）
 LISTED = [
-    "adapters/", "scripts/install.sh", "scripts/sync_skills.py", "scripts/build_explain_skill.py",
+    "adapters/", "scripts/install.sh", "scripts/build_explain_skill.py",
     "tests/check_portable.py", "tests/check_readme.py", "tests/check_output_layout.py",
     "tests/check_explain.py", "tests/test_install.py", "CHANGELOG.md",
 ]

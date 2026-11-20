@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "skill_version": "0.0.4",
+  "created_at": "2026-11-15T06:40:06+09:00",
+  "input": {
+    "path": "../../inputs/document.md",
+    "sha256": "464ce67779915ee2b4d8b242a553d184b1bae3a999b5aa292123012160ff2f6d",
+    "bytes": 2834
+  },
+  "body_sha256": "b0c32a42e71a1343fba81498b3bd7e2bb3b8ea983ad064726f95153f2e9e45ad",
+  "profile": "document",
+  "frontmatter": {
+    "title": "店舗在庫の見直し報告（2026年度 上期）",
+    "source_url": "https://example.com/files/inventory-report.pdf",
+    "source_format": "pdf",
+    "conversion": "pdf",
+    "has_figures": "true",
+    "summary": "小売事業部 在庫管理チーム（テスト用に作った架空の資料です）",
+    "retrieved_at": "2026-11-13T09:00:00+09:00"
+  },
+  "foreign_sections": []
+}

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "skill_version": "0.0.1",
+  "created_at": "2026-11-13T09:00:00+09:00",
+  "input": {
+    "path": "../../inputs/video.md",
+    "sha256": "aab2403f17784837ca7675be2893834f251c9918fcc1998479c167b29158d483",
+    "bytes": 3689
+  },
+  "body_sha256": "559ce98967253516254c9051597484c54814ea56511aa5f63ecfcafd46d300fb",
+  "profile": "video",
+  "frontmatter": {
+    "title": "5分でわかる在庫の回し方（在庫回転率の基本）",
+    "source_url": "https://www.youtube.com/watch?v=sample-0001",
+    "source_format": "youtube",
+    "channel": "サンプル講座チャンネル",
+    "published": "2026-10-01",
+    "duration": "05:20",
+    "has_figures": "false",
+    "summary": "小さな店の店長向けに、在庫の回し方を5分で説明する講義です。在庫回転率の計算と、動いていない在庫の見つけ方を扱います（テスト用に作った架空の動画です）。",
+    "retrieved_at": "2026-11-13T09:00:00+09:00"
+  },
+  "foreign_sections": []
+}

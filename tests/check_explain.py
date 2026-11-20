@@ -208,7 +208,7 @@ def layout_checks(text: str):
 
 
 def slide_mode_checks():
-    """ced-websearch-slide-ja（元のリポジトリ 13 の複製）に、確定値モードの決まりがあるか。"""
+    """ced-websearch-slide-ja に、確定値モードの決まりがあるか。"""
     problems = []
     create = SLIDE / "workflows/create.md"
     if not create.exists():

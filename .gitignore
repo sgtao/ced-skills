@@ -1,4 +1,4 @@
-# Python（sync_skills.py・検査スクリプトの実行で出るもの）
+# Python（検査スクリプトの実行で出るもの）
 __pycache__/
 *.py[cod]
 .venv/
@@ -18,7 +18,7 @@ test-results/
 _to_delete/
 tests/e2e-work/
 
-# 元のスキルの配布物（複製していない。dist は 01_sources 側）
+# 元のリポジトリの配布物（このリポジトリには無い。ローカルで出たものを除く）
 dist/
 
 # OS とエディタ

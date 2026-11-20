@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "skill_version": "0.0.4",
+  "created_at": "2026-11-15T06:40:02+09:00",
+  "input": {
+    "path": "../../inputs/article.md",
+    "sha256": "ea04aa3184fe2052131e36f368ac2ba9b7af5f7ceb281d3b1ab3202e53ee4584",
+    "bytes": 2944
+  },
+  "body_sha256": "7e0ff00d134c6674cfb897f89616e0f3aa24510b55f9befd326e13d00a52e66f",
+  "profile": "article",
+  "frontmatter": {
+    "title": "小さなチームの週次レビューを30分で終わらせる方法",
+    "source_url": "https://example.com/blog/weekly-review",
+    "source_format": "html",
+    "has_figures": "false",
+    "summary": "少人数のチームでは、週次レビューが長引くと、それだけで翌週の作業時間が削られます。この記事では、30分で終わらせるための決まりを三つ紹介します（テスト用に作った架空の記事です）。",
+    "retrieved_at": "2026-11-13T09:00:00+09:00"
+  },
+  "foreign_sections": []
+}

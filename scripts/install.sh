@@ -239,7 +239,7 @@ run() {
 
 if [ "$MODE" = "install" ]; then
   for s in $SKILLS; do
-    [ -f "${SRC}/${s}/SKILL.md" ] || die "複製元が見つからない: ${SRC}/${s}（sync_skills.py を先に実行）"
+    [ -f "${SRC}/${s}/SKILL.md" ] || die "複製元が見つからない: ${SRC}/${s}（plugins/ の中身が足りない）"
   done
   # ced-explain は claude 以外にだけ入るので、そのツールがある配置先のときだけ確かめる
   if printf '%s' "$DESTS" | cut -f1 | grep -qv '^claude$' && [ ! -f "${REPO}/adapters/ced-explain/SKILL.md" ]; then
