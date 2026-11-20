@@ -26,6 +26,11 @@ FINAL_FILES = ("README.md", "01_source.md", "02_explanation_memo.md",
                "11_question_and_answer.md", "12_LLM_prompts_as_guide.md")
 INDEX = "00_index.md"
 WORK = ".work"
+JUNK = {".DS_Store"}  # OS が作る屑ファイル（macOS の Finder）。どこにあっても無視する（ファイルだけ。同名のフォルダは無視しない）
+
+
+def is_junk(p: Path) -> bool:
+    return p.name in JUNK and p.is_file()
 DOCS = "docs"
 SLIDE_SUFFIX = "-slides"
 DATED_RE = re.compile(r"^[0-9]{6}_([a-z0-9]+(?:-[a-z0-9]+)*)$")
@@ -57,7 +62,7 @@ def check_set(d: Path, rel: str, body: str):
         if not (d / f).is_file():
             out.append(f"{rel}{f} が無い")
     for e in sorted(d.iterdir()):
-        if e.name == WORK or e.name in FINAL_FILES:
+        if is_junk(e) or e.name == WORK or e.name in FINAL_FILES:
             continue
         if e.name == DOCS and e.is_dir():
             continue
@@ -74,6 +79,8 @@ def check_set(d: Path, rel: str, body: str):
     mds = sorted(docs.glob(f"*{SLIDE_SUFFIX}.md"))
     htmls = sorted(docs.glob(f"*{SLIDE_SUFFIX}.html"))
     for e in sorted(docs.iterdir()):
+        if is_junk(e):
+            continue
         if e.suffix not in (".md", ".html") or not e.name.endswith(f"{SLIDE_SUFFIX}{e.suffix}"):
             out.append(f"{rel}{DOCS}/{e.name} は置いてはいけない（置いてよいのは <名前>{SLIDE_SUFFIX}.md/.html）")
     if len(mds) != 1 or len(htmls) != 1 or mds[0].stem != htmls[0].stem:
@@ -85,7 +92,7 @@ def check_set(d: Path, rel: str, body: str):
 
 def check_layout(root: Path):
     problems = []
-    entries = sorted(root.iterdir())
+    entries = sorted(e for e in root.iterdir() if not is_junk(e))
     names = {e.name for e in entries}
     # 旧い形の目印は、どこにあっても不合格（見本の v0.0.2 の出力）
     for p in sorted(root.rglob("*")):
@@ -110,7 +117,7 @@ def check_layout(root: Path):
         for c in children:
             problems += name_problems(c.name, dated=False)
             problems += check_set(c, f"{c.name}/", c.name)
-            if c.name not in index_text:
+            if f"]({c.name}/" not in index_text and f"](./{c.name}/" not in index_text:
                 problems.append(f"{INDEX} に {c.name} へのリンクが無い")
         for e in entries:
             if e.is_file() and e.name != INDEX:

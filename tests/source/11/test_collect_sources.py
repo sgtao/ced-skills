@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -160,7 +161,12 @@ def test_output_folder_with_sources_json_is_not_read(tmp_path):
 
 
 # ---- slug・ID・並び ------------------------------------------------------------
+D13_BODY = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
 def test_slug_and_collision_and_length(tmp_path):
+    # 書き換え（V3・D19）：子フォルダの名前（slug）は、旧 `src__main.py`・`A.txt` から、D13 の形（英小文字・数字・-、
+    # 40 文字以内、拡張子なし、日付なし）に変えた。期待値は規則から作る
     src = tmp_path / "src"
     (src / "src").mkdir(parents=True)
     (src / "src" / "main.py").write_text(pad("print('x')  # " + JA), encoding="utf-8")
@@ -170,14 +176,87 @@ def test_slug_and_collision_and_length(tmp_path):
     out = tmp_path / "out"
     assert prep(src, out)[0] == 0
     slugs = {i["path"]: i["slug"] for i in load(out)["items"]}
-    assert slugs["src/main.py"] == "src__main.py"
-    assert all(len(s) <= 80 for s in slugs.values())
-    assert slugs["A.txt"] == "A.txt"
+    assert slugs["src/main.py"] == "src-main"
+    assert slugs["A.txt"] == "a"
+    assert all(D13_BODY.match(s) and len(s) <= 40 for s in slugs.values()), slugs
 
 
-def test_case_insensitive_collision_gets_hash_suffix(tmp_path):
-    assert cs.make_slugs(["A.txt", "a.txt"])[0] != cs.make_slugs(["A.txt", "a.txt"])[1]
-    assert cs.make_slugs(["A.txt", "a.txt"])[0] == "A.txt"
+def test_slugs_follow_d13_for_awkward_names():
+    # D19：子の名前はファイル名から自動で決める。D13 の形にならない名前（記号・日本語・長い名前・空）も、必ず D13 の形になる
+    names = ["calc_stock.py", "stock-review.pdf", "Weird  Name!!.v2.md", "資料.pdf", "日本語の題.txt",
+             "x" * 120 + ".txt", "dir/sub dir/File (final).docx", ".hidden", "---.md", "a b/c_d.py"]
+    slugs = cs.make_slugs(names)
+    assert slugs[:2] == ["calc-stock", "stock-review"]
+    assert slugs[2] == "weird-name-v2"
+    assert all(D13_BODY.match(s) and len(s) <= 40 for s in slugs), slugs
+    assert len(set(slugs)) == len(slugs), slugs  # 重ならない
+
+
+def test_slug_collisions_get_numbers_not_hashes():
+    # 書き換え（V3・D19）：旧は大文字小文字の重なりに SHA-1 の 6 字を付けた（`A.txt`／`a.txt-<hash>`）。
+    # D13 の形に収めるため、番号（-2・-3）にした。拡張子違い（stock.py／stock.md）・日本語名どうしの重なりも同じ
+    assert cs.make_slugs(["A.txt", "a.txt"]) == ["a", "a-2"]
+    assert cs.make_slugs(["stock.py", "stock.md", "stock.txt"]) == ["stock", "stock-2", "stock-3"]
+    assert cs.make_slugs(["資料.pdf", "題.pdf"]) == ["source", "source-2"]
+    long_pair = cs.make_slugs(["n" * 120 + ".txt", "n" * 120 + ".md"])
+    assert long_pair[0] != long_pair[1] and all(len(s) <= 40 and D13_BODY.match(s) for s in long_pair)
+
+
+def _done(out, item_id):
+    for stt in ("docs_done", "done"):
+        assert run("mark", "--out-dir", str(out), "--id", str(item_id), "--status", stt)[0] == 0
+
+
+def test_slugs_stay_when_a_file_is_added_later(tmp_path):
+    # reviewer の高（D19 の再現）：stock.md・stock.txt を解説済みにしたあと stock.csv を足すと、番号の振り直しで
+    # stock.csv が `stock` になり、解説済みの stock.md が `stock-2` にずれた。子フォルダの名前は、前回の記録を引き継ぐ
+    src = tmp_path / "in"
+    src.mkdir()
+    for n in ("stock.md", "stock.txt"):
+        (src / n).write_text(pad(JA), encoding="utf-8")
+    out = tmp_path / "out"
+    assert prep(src, out)[0] == 0
+    first = {i["path"]: i["slug"] for i in load(out)["items"]}
+    assert first == {"stock.md": "stock", "stock.txt": "stock-2"}
+    for i in load(out)["items"]:
+        _done(out, i["id"])
+    (src / "stock.csv").write_text("a,b\n" * 20, encoding="utf-8")
+    assert prep(src, out)[0] == 0
+    items = {i["path"]: i for i in load(out)["items"]}
+    assert items["stock.md"]["slug"] == "stock" and items["stock.txt"]["slug"] == "stock-2"
+    assert items["stock.csv"]["slug"] == "stock-3"
+    assert items["stock.md"]["status"] == "done" and items["stock.txt"]["status"] == "done"
+    assert len({i["slug"] for i in items.values()}) == 3
+
+
+def test_resume_with_old_style_slugs_stops_with_guidance(tmp_path):
+    # reviewer の中：旧い形の slug（`report.txt`・`stock__a.md`）の記録を、そのまま再開すると、新しい名前と
+    # 実際のフォルダが食い違って孤児ができる。黙って進めず、理由コードで止める（単独 1 件の再開は止めない）
+    src = tmp_path / "in"
+    src.mkdir()
+    for n in ("report.txt", "stock.md"):
+        (src / n).write_text(pad(JA), encoding="utf-8")
+    out = tmp_path / "out"
+    assert prep(src, out)[0] == 0
+    sj = out / ".work" / "sources.json"
+    data = load(out)
+    for i in data["items"]:
+        i["slug"] = i["path"]  # 旧い形（拡張子つき）に書き換える
+    sj.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    code, _, err = prep(src, out)
+    assert code != 0 and reason(err) == "OLD_SLUG_FORMAT", err
+
+
+def test_single_item_resume_is_not_blocked_by_old_style_slug(tmp_path):
+    src = tmp_path / "in"
+    src.mkdir()
+    (src / "report.txt").write_text(pad(JA), encoding="utf-8")
+    out = tmp_path / "out"
+    assert prep(src, out)[0] == 0
+    data = load(out)
+    data["items"][0]["slug"] = "report.txt"
+    (out / ".work" / "sources.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    assert prep(src, out)[0] == 0
 
 
 def test_ids_follow_relative_path_order(tmp_path):
@@ -310,7 +389,8 @@ def test_valid_zip_extracts_and_keeps_original(tmp_path):
     out = tmp_path / "out"
     assert prep(z, out)[0] == 0
     items = load(out)["items"]
-    assert [i["slug"] for i in items] == ["pack__code__x.py", "pack__docs__ja.txt"]
+    # 書き換え（V3・D19）：旧 `pack__code__x.py`。ZIP の名前は子の名前に入れない（親に付いているため）
+    assert [i["slug"] for i in items] == ["code-x", "docs-ja"]
     assert hashlib.sha256(z.read_bytes()).hexdigest() == before
     assert (out / ".work" / "unzipped" / "pack" / "docs" / "ja.txt").exists()
 
@@ -427,7 +507,8 @@ def test_index_lists_items_and_skips_when_two_or_more(tmp_path):
     assert run("index", "--out-dir", str(out))[0] == 0
     text = (out / "00_index.md").read_text(encoding="utf-8")
     assert "a.txt" in text and "b.txt" in text and ".env" in text and "SECRET" in text
-    assert "](a.txt/README.md)" in text and "explained" not in text
+    # 書き換え（V3・D19）：旧 `](a.txt/README.md)`。子の名前は拡張子なしの D13 の形（a.txt → a）
+    assert "](a/README.md)" in text and "](b/README.md)" in text and "explained" not in text
 
 
 # ---- 4.1・4.5・4.7 の残りの行 ---------------------------------------------------------

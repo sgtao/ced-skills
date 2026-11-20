@@ -48,6 +48,53 @@ class LayoutTest(unittest.TestCase):
             (d / "00_index.md").write_text("# 一覧\n- stock-review\n", encoding="utf-8")
             self.assertTrue(any("calc-stock" in p for p in check_layout(d)))
 
+    def test_os_junk_files_are_ignored_but_real_extras_still_fail(self):
+        # macOS が Finder で作る .DS_Store は、どこにあっても形の検査で無視する（実物の出力で H2 が落ちたため）。
+        # 無視するのは OS の屑ファイルだけで、ほかの余分なファイルは今までどおり不合格
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t) / "261120_report-pack"
+            shutil.copytree(OK_MULTI, d)
+            junk = [d / ".DS_Store", d / "stock-review" / ".DS_Store", d / "stock-review" / "docs" / ".DS_Store",
+                    d / "stock-review" / ".work" / ".DS_Store"]
+            for j in junk:
+                j.write_bytes(b"\0")
+            self.assertEqual(check_layout(d), [])
+            (d / "stock-review" / "notes.md").write_text("x", encoding="utf-8")
+            self.assertTrue(any("notes.md" in p for p in check_layout(d)))
+        with tempfile.TemporaryDirectory() as t:
+            d = self.copy_single(t)
+            (d / ".DS_Store").write_bytes(b"\0")
+            (d / "docs" / ".DS_Store").write_bytes(b"\0")
+            self.assertEqual(check_layout(d), [])
+
+    def test_index_link_must_name_the_child_not_a_substring(self):
+        # reviewer の低：子の名前が短い（a・d）と、索引に `md` があるだけで `d` のリンクがあると判定された
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t) / "261120_report-pack"
+            shutil.copytree(OK_MULTI, d)
+            (d / "stock-review").rename(d / "a")
+            (d / "calc-stock").rename(d / "d")
+            (d / "00_index.md").write_text("# 一覧\n- [a](a/README.md)\n- 解説メモ（md）\n", encoding="utf-8")
+            link = lambda: [p for p in check_layout(d) if "へのリンクが無い" in p]  # noqa: E731（名前を変えたのでスライド名の指摘は別）
+            self.assertEqual(link(), ["00_index.md に d へのリンクが無い"])
+            (d / "00_index.md").write_text("# 一覧\n- [a](a/README.md)\n- [d](d/README.md)\n", encoding="utf-8")
+            self.assertEqual(link(), [])
+
+    def test_a_folder_named_ds_store_is_not_ignored(self):
+        # reviewer の低：無視するのは屑ファイルだけ。`.DS_Store` という名前のフォルダは、中身ごと不合格にする
+        with tempfile.TemporaryDirectory() as t:
+            d = self.copy_single(t)
+            (d / ".DS_Store").mkdir()
+            self.assertTrue(check_layout(d))
+
+    def test_a_child_with_a_non_d13_name_still_fails(self):
+        # L4 の再発防止：slug 由来の `calc_stock.py` のような名前は、.DS_Store を無視するようにしても不合格のまま
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t) / "261120_report-pack"
+            shutil.copytree(OK_MULTI, d)
+            (d / "stock-review").rename(d / "e2e-input__stock-review.pdf")
+            self.assertTrue(any("e2e-input__stock-review.pdf" in p for p in check_layout(d)))
+
     def test_single_with_extra_memo_file_fails(self):
         with tempfile.TemporaryDirectory() as t:
             d = self.copy_single(t)

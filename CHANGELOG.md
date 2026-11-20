@@ -10,6 +10,8 @@ ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履�
 - **題と日付**：`collect_sources.py plan` が、出力フォルダ名の材料（`title`・`date`・`date_source`・`head`）と、再開できる既存のフォルダ（`resumable`）を返す。日付は、YouTube・Web の公開日、PDF・Office の作成日、Markdown の `published` など。取れなければ実行した日
 - **`collect_sources.py fetch`**：Web ページ・YouTube を、今いるフォルダの `01_sources/YYMMDD_<名前>.md` に取得する。同じ URL は通信せずに同じファイルを返す
 - **解説済みを飛ばす**：引数なしの実行で、他の出力フォルダで `done` の項目を飛ばす（`ALREADY_EXPLAINED`。全部なら `ALL_EXPLAINED`）
+- **2 件以上のときの子フォルダの名前**：ファイル名から、拡張子なし・英小文字・数字・`-`・40 文字以内（例：`stock-review`）で自動で決める。重なると `-2`。旧は `e2e-input__stock-review.pdf` のように記号と拡張子を含み、出力の形の検査に落ちていた。形の検査は、macOS の `.DS_Store` を無視する
+- **子フォルダの名前の安定**：解説済みのあとにファイルを足しても、既存の子の名前はずれない（前回の記録を引き継ぐ）。旧い形の名前の記録は、`OLD_SLUG_FORMAT` で止めて案内する（2 件以上のときだけ）
 - **実行前の環境確認**：`/ced-skills:explain` が、最初に `python3 --version` で版を確かめ、3.10 未満や依存が無いときは `uv run --python 3.12` で動かす
 
 ### 変更

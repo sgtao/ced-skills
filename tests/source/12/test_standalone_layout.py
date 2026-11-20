@@ -11,8 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from conftest import GOLDEN_VIDEO, ROOT, default_dest, run_script
 from test_ingest import ingest
 
@@ -79,8 +77,6 @@ def test_explain_flow_prepare_then_scaffold_into_the_out_dir(tmp_path):
     assert (out / "01_source.md").is_file() and (out / ".work" / "sources.json").is_file()
 
 
-@pytest.mark.xfail(strict=True, reason="L4（PROGRESS.md）：2 件以上の子フォルダの名前が slug（例 e2e-input__stock-review.pdf）のまま。"
-                   "D13 の形（英小文字・数字・-）にしたら、この印を外す（strict なので、直すと XPASS で落ちて気づく）")
 def test_real_zip_two_items_children_pass_the_layout_check(tmp_path):
     """実物の ZIP（H2 と同じ tests/fixtures/e2e/e2e-input.zip・2 件）を、prepare に通した子フォルダの名前が、形の検査に合格する。
 

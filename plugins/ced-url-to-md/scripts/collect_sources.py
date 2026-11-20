@@ -113,17 +113,40 @@ def slug_of(src: str) -> str:
     return s[:SLUG_MAX]
 
 
-def make_slugs(sources: list[str]) -> list[str]:
-    """入力の順に slug を作る。大文字と小文字を無視して重なるときは、元のパスの SHA-1 の先頭 6 字を付ける。"""
-    out, seen = [], set()
-    for src in sources:
-        base = slug_of(src)
-        cand = base
-        if cand.lower() in seen:
-            h = hashlib.sha1(src.encode("utf-8")).hexdigest()[:6]
-            cand = base[: SLUG_MAX - 7] + "-" + h
-        seen.add(cand.lower())
-        out.append(cand)
+def child_name(src: str) -> str:
+    """2 件以上のときの子フォルダの名前（D19・D13）。ファイル名から自動で決める。
+    拡張子を除き、英小文字・数字・- だけにして 40 文字以内に切る。英字が無ければ `source`。日付は付けない。"""
+    parts = src.replace("\\", "/").split("/")
+    last = parts[-1]
+    if "." in last[1:]:
+        last = last.rsplit(".", 1)[0]
+    return cut(slugify("/".join(parts[:-1] + [last]))) or FALLBACK_NAME
+
+
+SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")  # D13（日付を除いた名前）
+
+
+def valid_slug(slug) -> bool:
+    return isinstance(slug, str) and bool(SLUG_RE.match(slug)) and len(slug) <= MAX_NAME_BODY
+
+
+def make_slugs(sources: list[str], fixed: dict[int, str] | None = None) -> list[str]:
+    """入力の順に、子フォルダの名前（slug）を作る。重なるときは、2 番目から -2・-3 を付ける（D13 の形のまま）。
+    fixed は、前回の記録から引き継ぐ名前（位置 → 名前）。先に確保するので、足した項目で既存の名前はずれない。"""
+    fixed = fixed or {}
+    out: list = [fixed.get(n) for n in range(len(sources))]
+    seen = set(fixed.values())
+    for n, src in enumerate(sources):
+        if out[n] is not None:
+            continue
+        base = child_name(src)
+        cand, k = base, 1
+        while cand in seen:
+            k += 1
+            suffix = f"-{k}"
+            cand = cut(base, MAX_NAME_BODY - len(suffix)) + suffix
+        seen.add(cand)
+        out[n] = cand
     return out
 
 
@@ -298,7 +321,7 @@ def scan_zip(zpath: Path, rel_zip: str, is_arg: bool) -> tuple[list[dict], list[
             except SkipFile as e:
                 skipped.append({"path": path, "reason": e.reason})
                 continue
-            res.update({"path": path, "slug_src": f"{base}/{name}", "origin": "zip",
+            res.update({"path": path, "slug_src": f"{base}/{name}", "name_src": name, "origin": "zip",
                         "member": name, "zip_rel": rel_zip, "disk": None})
             entries.append(res)
     return entries, skipped
@@ -437,8 +460,14 @@ def out_state(out_dir: Path | None, key: str, phash: str) -> tuple[str, dict | N
 def build_items(entries: list[dict], prev: dict | None) -> list[dict]:
     """並びは相対パスの昇順。前回の記録と sha256 が同じなら、状態を引き継ぐ（done は飛ばす）。"""
     entries = sorted(entries, key=lambda e: e["path"])
-    slugs = make_slugs([e["slug_src"] for e in entries])
     prev_map = {i["path"]: i for i in (prev or {}).get("items", [])}
+    if len(prev_map) >= 2 and any(not valid_slug(i.get("slug")) for i in prev_map.values()):
+        raise StopReason("OLD_SLUG_FORMAT", "前回の記録の子フォルダの名前が旧い形（拡張子や記号を含む）。"
+                         "名前が食い違うので、このまま再開しない",
+                         next_step="この出力先を別の名前に移すか消して、新しい出力先で実行し直してください")
+    fixed = {n: prev_map[e["path"]]["slug"] for n, e in enumerate(entries)
+             if e["path"] in prev_map and valid_slug(prev_map[e["path"]].get("slug"))}
+    slugs = make_slugs([e.get("name_src", e["slug_src"]) for e in entries], fixed)
     items = []
     for n, (e, slug) in enumerate(zip(entries, slugs), 1):
         item = {"id": n, "slug": slug, "path": e["path"], "kind": e["kind"], "route": e["route"],
