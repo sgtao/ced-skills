@@ -99,7 +99,8 @@ class V3StaticTest(unittest.TestCase):
 
     NEEDLES = {"`fetch`": "fetch", "needs_fetch": "needs_fetch", "date_source": "date_source",
                "--resume": "--resume", "resumable": "resumable", "ALREADY_EXPLAINED": "ALREADY_EXPLAINED",
-               "ALL_EXPLAINED": "ALL_EXPLAINED", "head": "head"}
+               "ALL_EXPLAINED": "ALL_EXPLAINED", "head": "head",
+               "python3 --version": "python3 --version", "uv run --python 3.12": "uv run"}
 
     def test_current_explain_passes(self):
         self.assertEqual(ce.v3_checks(ce.EXPLAIN.read_text(encoding="utf-8")), [])

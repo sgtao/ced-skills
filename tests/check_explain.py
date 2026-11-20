@@ -208,6 +208,11 @@ def v3_checks(text: str):
             problems.append(f"引数なしの実行で解説済みを飛ばす（{code}）の記述が無い")
     if "未実装" in text:
         problems.append("「未実装」の注記が残っている（題・日付の取得は実装済み）")
+    # 1120-04 Q1・Q2：システムの python3 が 3.10 未満だと scaffold.py などが落ちる。依存（bs4 など）は uv run が入れる
+    if "python3 --version" not in text:
+        problems.append("実行の前に python3 --version で版を確かめる記述が無い（3.10 未満で落ちる）")
+    if "uv run --python 3.12" not in text:
+        problems.append("3.10 未満・依存が無いときに uv run --python 3.12 を使う記述が無い")
     return problems
 
 

@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from conftest import GOLDEN_VIDEO, ROOT, default_dest, run_script
 from test_ingest import ingest
 
@@ -75,3 +77,34 @@ def test_explain_flow_prepare_then_scaffold_into_the_out_dir(tmp_path):
     s = run_script("scaffold.py", md, "--dest", out)
     assert s.returncode == 0, s.stderr
     assert (out / "01_source.md").is_file() and (out / ".work" / "sources.json").is_file()
+
+
+@pytest.mark.xfail(strict=True, reason="L4（PROGRESS.md）：2 件以上の子フォルダの名前が slug（例 e2e-input__stock-review.pdf）のまま。"
+                   "D13 の形（英小文字・数字・-）にしたら、この印を外す（strict なので、直すと XPASS で落ちて気づく）")
+def test_real_zip_two_items_children_pass_the_layout_check(tmp_path):
+    """実物の ZIP（H2 と同じ tests/fixtures/e2e/e2e-input.zip・2 件）を、prepare に通した子フォルダの名前が、形の検査に合格する。
+
+    見本ではなく、実際の prepare が決める名前で確かめる（reviewer の L4 を「低」で先送りしたとき、H2 の合格条件を
+    落としていたため。DECISIONS.md の学び 2026-11-20）。LLM が書く部分は、決まった文面で代わりに入れる。
+    """
+    prepare = ROOT / "plugins" / "ced-url-to-md" / "scripts" / "collect_sources.py"
+    zip_path = ROOT / "tests" / "fixtures" / "e2e" / "e2e-input.zip"
+    out = Path.cwd() / "261120_e2e"
+    p = subprocess.run([sys.executable, str(prepare), "prepare", str(zip_path), "--out-dir", str(out)],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert p.returncode == 0, p.stderr
+    items = json.loads((out / ".work" / "sources.json").read_text(encoding="utf-8"))["items"]
+    assert len(items) == 2
+    (out / "00_index.md").write_text(
+        "# 索引\n\n" + "".join(f"- [{it['slug']}](./{it['slug']}/README.md)\n" for it in items), encoding="utf-8")
+    for it in items:
+        d = out / it["slug"]  # 子フォルダの名前は、prepare が決めた slug のまま使われる（explain.md の流れ）
+        (d / "docs").mkdir(parents=True)
+        (d / ".work").mkdir()
+        for f in ("README.md", "01_source.md", "02_explanation_memo.md", "11_question_and_answer.md",
+                  "12_LLM_prompts_as_guide.md"):
+            (d / f).write_text("x", encoding="utf-8")
+        (d / "docs" / f"{it['slug']}-slides.md").write_text("x", encoding="utf-8")
+        (d / "docs" / f"{it['slug']}-slides.html").write_text("x", encoding="utf-8")
+    code, problems = layout(out)
+    assert code == 0 and problems == [], problems

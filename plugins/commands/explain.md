@@ -10,6 +10,14 @@ allowed-tools: Skill, Bash, Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, 
 
 ## 手順
 
+**実行の前に**、手順 1 の最初のスクリプト（`collect_sources.py plan`）の前に 1 回だけ、`python3 --version` と `uv --version` で環境を確かめ、スクリプトの動かし方を決める。
+
+- `python3` が 3.10 以上：`python3 <スクリプト> ...` で動かす。`ModuleNotFoundError`（`bs4` などの依存が無い）が出たら、その呼び出しだけを、次の `uv run` で動かし直す
+- `python3` が 3.10 未満（macOS の標準は 3.9 のことがある。`collect_sources.py prepare` や `scaffold.py` が `TypeError` で落ちる）：`uv run --python 3.12 <スクリプト> ...` で動かす。依存は `uv run` が入れる。3.12 が手元に無いと `uv` が取得するので、初回は通信と時間がかかる。例：`uv run --python 3.12 <SKILL_DIR>/scripts/ced_name.py --date <YYMMDD> --title "<題>" --existing <親>`
+- `uv` が無く、`python3` が 3.10 未満：`uv`（https://docs.astral.sh/uv/）か 3.10 以上の Python を入れるようユーザーに伝えて止まる。`uv` が無く、3.10 以上で依存だけ無いときは、`ced-url-to-md` の手順（ユーザーに確認して `pip install`）に従う
+
+以降の `python3 <...>` の呼び出し（`collect_sources.py`・`ced_name.py`、craft の `scaffold.py`・`check_docs.py` など。`<SKILL_DIR>` は、そのスクリプトのあるスキルのフォルダ）は、すべてここで決めた動かし方に読み替える。
+
 ### 1. 入力を決め、対象を調べ、最初の質問を 1 回にまとめる
 入力は、次の順で決める（先に当たったもの）。
 1. 引数の入力（URL・ファイル・フォルダ・ZIP）
