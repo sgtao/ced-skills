@@ -427,7 +427,7 @@ def test_index_lists_items_and_skips_when_two_or_more(tmp_path):
     assert run("index", "--out-dir", str(out))[0] == 0
     text = (out / "00_index.md").read_text(encoding="utf-8")
     assert "a.txt" in text and "b.txt" in text and ".env" in text and "SECRET" in text
-    assert "](a.txt/explained/README.md)" in text
+    assert "](a.txt/README.md)" in text and "explained" not in text
 
 
 # ---- 4.1・4.5・4.7 の残りの行 ---------------------------------------------------------

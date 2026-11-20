@@ -613,13 +613,14 @@ def cmd_plan(args) -> dict:
     for cand in cands:
         entries, skipped = scan(cand)
         phash = params_hash(args.slides, args.audience)
-        out_dir = out_root or (Path(args.cwd).resolve() / "explain-out" / cand["name"])
+        # v0.0.3：出力先（YYMMDD_<名前>/）は Q1 のあとに決まる。決まるまでは --out-dir を付けず、状態は「new」
+        out_dir = out_root
         state, prev = out_state(out_dir, input_key(cand), phash)
         items = build_items(entries, prev if state == "resume" else None)
         pend = pending_count(items)
         result["candidates"].append({
             "kind": cand["kind"], "root": cand["root"], "name": cand["name"],
-            "out": {"dir": str(out_dir), "state": state},
+            "out": {"dir": str(out_dir) if out_dir else None, "state": state},
             "items": [public(i) for i in items], "skipped": skipped,
             "pending": pend, "needs_choice": pend > args.max_files,
             "estimate": {"items": pend, "usd": [round(1.27 * pend, 2), round(2.07 * pend, 2)],
@@ -730,7 +731,7 @@ def cmd_index(args) -> dict:
         status = i["status"] + (f"（{i['reason']}）" if i["status"] == "failed" else "")
         # f 文字列の {} の中に \ を書けるのは Python 3.12 以降。3.10 でも動くように、先に作る
         path_cell = i['path'].replace('|', '\\|')
-        rows.append(f"| {i['id']} | {status} | `{path_cell}` | [{i['slug']}]({i['slug']}/explained/README.md) |")
+        rows.append(f"| {i['id']} | {status} | `{path_cell}` | [{i['slug']}]({i['slug']}/README.md) |")
     sk = [f"- `{s['path']}`（{s['reason']}）" for s in skipped] or ["（なし）"]
     text = ("# 一覧\n\n"
             f"入力: {data['input_name']}（{len(items)} 件）\n\n"

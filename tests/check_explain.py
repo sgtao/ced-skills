@@ -154,12 +154,14 @@ def m5_checks(text: str):
     # 2 件以上の一覧・解説メモの作業フォルダ
     if "00_index.md" not in text or "index" not in text:
         problems.append("2 件以上のときの 00_index.md の記述が無い")
-    if "explained" not in text or "DEST_EXISTS" not in text:
-        problems.append("再開のときに explained/ を渡す（DEST_EXISTS にしない）の記述が無い")
+    if "DEST_EXISTS" not in text or "直下" not in text:
+        problems.append("再開のときに作業フォルダの直下（README.md・01_source.md）を見る（DEST_EXISTS にしない）の記述が無い")
     # 4.6：Q1 は --out の先が衝突するときも出す。Q4 は未完了が 2 件以上、または参照元が 2 つのとき。一覧は 10 件まで
     q1 = names.get("1", "")
-    if "衝突" not in q1:
-        problems.append("Q1 に、--out の先が衝突するときも出す、の記述が無い")
+    if "フォルダ名" not in q1 or "候補" not in q1:
+        problems.append("Q1 に、フォルダ名の候補 3 つ（ced_name.py の結果）を出す、の記述が無い")
+    if "ced_name.py" not in text:
+        problems.append("フォルダ名の候補を ced_name.py で作る、の記述が無い")
     if "未完了が 2 件以上、または参照元が 2 つ" not in q4:
         problems.append("Q4 の条件（未完了が 2 件以上、または参照元が 2 つ）が無い")
     if "10 件" not in text:
@@ -191,12 +193,14 @@ def m5_checks(text: str):
 def layout_checks(text: str):
     """explain.md が、出力の形（PLAN.md 4.8）を決めているか。形そのものの検査は check_output_layout.py。"""
     problems = []
-    tree = re.search(r"```\n<出力先>/\n.*?```", text, re.S)
+    tree = re.search(r"```\n<出力先>/[^\n]*\n.*?```", text, re.S)
     if not tree:
         return ["出力の形の図（<出力先>/ から始まる図）が無い"]
-    for k in ("explained/", "<入力の名前>-slides.md", "<入力の名前>-slides.html", ".work/"):
+    for k in ("README.md", "01_source.md", "02_explanation_memo.md", "docs/", "<名前>-slides.md", "<名前>-slides.html", ".work/"):
         if k not in tree.group(0):
             problems.append(f"出力の形の図に「{k}」が無い")
+    if "explained/" in tree.group(0):
+        problems.append("出力の形の図に explained/ が残っている（v0.0.3 は解説メモを直下に置く）")
     if "固定" not in text:
         problems.append("出力の形を固定する記述（「固定」）が無い")
     for m in re.finditer(r"\./explain-out(?!/<入力の名前>)", text):

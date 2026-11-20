@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""合格条件 8：出力フォルダの「形」を確かめる。標準ライブラリのみ。中身の質は見ない（それは check_docs.py と lint の役割）。
+"""合格条件 9：出力フォルダの「形」を確かめる（v0.0.3 の形）。標準ライブラリのみ。中身の質は見ない（それは check_docs.py と lint の役割）。
 
-形（PLAN.md 4.8）:
-  入力 1 件  <出力先>/explained/（5 ファイル＋任意の out/）、<名前>-slides.md と .html が 1 組、任意の .work/
-  入力 2 件以上  <出力先>/00_index.md、<スラッグ>/（explained/ と <スラッグ>-slides.md・.html）、任意の .work/
-  どちらも、上の他のものが出力先の直下にあれば不合格。判定は、00_index.md の有無で 1 件／2 件以上に分ける。
+形（PLAN.md 4.2・D13・D14）:
+  入力 1 件  <出力先>/ が YYMMDD_<名前>/ という名前で、直下に解説メモの 5 ファイル、docs/ に
+             <名前>-slides.md と .html が 1 組（名前は日付を除く）、任意の .work/（隠し）。それ以外は置かない。
+  入力 2 件以上  <出力先>/ が YYMMDD_<名前>/ で、直下は 00_index.md と、子のフォルダ（<子の名前>/）だけ。
+             子のフォルダは、1 件のときと同じ形（子の名前は日付を付けない）。任意の .work/。
+
+名前の決まり（D13）: `YYMMDD_<英小文字と数字と ->`、`_` の後ろは 40 文字以内。
 
 不合格の形（見本は tests/fixtures/layout/bad-*）:
-  <ID>_explained/ という名前のメモのフォルダ、<名前>/explain-out/ の入れ子、直下の source.md などの中間ファイル
+  v0.0.2 の形（explained/・explain-out/・<ID>_explained/・直下のスライド）、日付の無い名前、40 文字を超える名前、
+  docs/ の外のスライド、直下の中間ファイル。
 
 使い方: python3 tests/check_output_layout.py <出力フォルダ> [--json]
 終了コード: 0＝合格、1＝不合格、2＝フォルダが無い
 """
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -21,29 +26,60 @@ FINAL_FILES = ("README.md", "01_source.md", "02_explanation_memo.md",
                "11_question_and_answer.md", "12_LLM_prompts_as_guide.md")
 INDEX = "00_index.md"
 WORK = ".work"
+DOCS = "docs"
 SLIDE_SUFFIX = "-slides"
+DATED_RE = re.compile(r"^[0-9]{6}_([a-z0-9]+(?:-[a-z0-9]+)*)$")
+PLAIN_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+MAX_BODY = 40
+OLD_SHAPE_DIRS = ("explained", "explain-out")
 
 
-def check_set(d: Path, rel: str, slide_name):
-    """1 つのセット（解説メモ＋スライド）の形を確かめる。d は、そのセットを置く（出力先かスラッグの）フォルダ。"""
-    out = []
-    docs = d / "explained"
-    if not docs.is_dir():
-        out.append(f"{rel}explained/ が無い")
+def name_problems(name: str, dated: bool):
+    """フォルダ名の決まり。dated なら YYMMDD_ を付ける。"""
+    if dated:
+        m = DATED_RE.match(name)
+        if not m:
+            return [f"{name}/ の名前が YYMMDD_<英小文字と数字と -> の形ではない"]
+        body = m.group(1)
     else:
-        for f in FINAL_FILES:
-            if not (docs / f).is_file():
-                out.append(f"{rel}explained/{f} が無い")
-        for e in sorted(docs.iterdir()):
-            if e.name in FINAL_FILES or (e.name == "out" and e.is_dir()):
-                continue
-            out.append(f"{rel}explained/{e.name} は置いてはいけない（5 ファイルと out/ だけ）")
-    mds = sorted(p for p in d.glob(f"*{SLIDE_SUFFIX}.md"))
-    htmls = sorted(p for p in d.glob(f"*{SLIDE_SUFFIX}.html"))
-    if len(mds) != 1 or len(htmls) != 1 or (mds and htmls and mds[0].stem != htmls[0].stem):
-        out.append(f"{rel}<名前>{SLIDE_SUFFIX}.md と .html が 1 組ではない（md {len(mds)} 件、html {len(htmls)} 件）")
-    elif slide_name is not None and mds[0].stem != slide_name + SLIDE_SUFFIX:
-        out.append(f"{rel}スライドの名前は {slide_name}{SLIDE_SUFFIX}.md のはず（実際: {mds[0].name}）")
+        if not PLAIN_RE.match(name):
+            return [f"{name}/ の名前が英小文字と数字と - だけの形ではない"]
+        body = name
+    if len(body) > MAX_BODY:
+        return [f"{name}/ の名前が 40 文字を超えている（{len(body)} 字）"]
+    return []
+
+
+def check_set(d: Path, rel: str, body: str):
+    """1 つのセット（解説メモ 5 ファイル＋docs/ のスライド）の形を確かめる。d は、そのセットのフォルダ。"""
+    out = []
+    for f in FINAL_FILES:
+        if not (d / f).is_file():
+            out.append(f"{rel}{f} が無い")
+    for e in sorted(d.iterdir()):
+        if e.name == WORK or e.name in FINAL_FILES:
+            continue
+        if e.name == DOCS and e.is_dir():
+            continue
+        if e.name in OLD_SHAPE_DIRS and e.is_dir():
+            out.append(f"{rel}{e.name}/ は v0.0.2 の形（解説メモは直下に置く）")
+        elif e.is_dir():
+            out.append(f"{rel}{e.name}/ は置いてはいけない（直下に置いてよいのは 5 ファイル、docs/、.work/）")
+        else:
+            out.append(f"{rel}{e.name} は置いてはいけない（直下に置いてよいのは 5 ファイル、docs/、.work/）")
+    docs = d / DOCS
+    if not docs.is_dir():
+        out.append(f"{rel}{DOCS}/ が無い")
+        return out
+    mds = sorted(docs.glob(f"*{SLIDE_SUFFIX}.md"))
+    htmls = sorted(docs.glob(f"*{SLIDE_SUFFIX}.html"))
+    for e in sorted(docs.iterdir()):
+        if e.suffix not in (".md", ".html") or not e.name.endswith(f"{SLIDE_SUFFIX}{e.suffix}"):
+            out.append(f"{rel}{DOCS}/{e.name} は置いてはいけない（置いてよいのは <名前>{SLIDE_SUFFIX}.md/.html）")
+    if len(mds) != 1 or len(htmls) != 1 or mds[0].stem != htmls[0].stem:
+        out.append(f"{rel}{DOCS}/ に <名前>{SLIDE_SUFFIX}.md と .html が 1 組ではない（md {len(mds)} 件、html {len(htmls)} 件）")
+    elif mds[0].stem != body + SLIDE_SUFFIX:
+        out.append(f"{rel}{DOCS}/ のスライドの名前は {body}{SLIDE_SUFFIX}.md のはず（実際: {mds[0].name}）")
     return out
 
 
@@ -51,38 +87,37 @@ def check_layout(root: Path):
     problems = []
     entries = sorted(root.iterdir())
     names = {e.name for e in entries}
-    # 不合格の形：名前の付いた入れ子や中間ファイルは、どこにあっても不合格
+    # 旧い形の目印は、どこにあっても不合格（見本の v0.0.2 の出力）
     for p in sorted(root.rglob("*")):
         if WORK in p.relative_to(root).parts:
             continue
         rel = p.relative_to(root).as_posix()
         if p.is_dir() and p.name == "explain-out":
-            problems.append(f"{rel}/ は入れ子の出力（explain-out の中に出力がある）")
+            problems.append(f"{rel}/ は v0.0.2 の入れ子（explain-out）")
         if p.is_dir() and p.name.endswith("_explained"):
-            problems.append(f"{rel}/ は旧形式のメモのフォルダ（メモは explained/ に置く）")
+            problems.append(f"{rel}/ は v0.0.2 の形のメモのフォルダ（<ID>_explained）")
+    problems += name_problems(root.name, dated=True)
     if INDEX in names:  # 2 件以上
-        slugs = [e for e in entries if e.is_dir() and e.name not in ("explained", WORK)]
-        if "explained" in names:
-            problems.append("2 件以上の形なのに、直下に explained/ がある")
-        if len(slugs) < 2:
-            problems.append(f"{INDEX} があるのに、スラッグのフォルダが {len(slugs)} 件（2 件以上のはず）")
+        children = [e for e in entries if e.is_dir() and e.name not in (WORK,)]
+        if len(children) < 2:
+            problems.append(f"{INDEX} があるのに、子のフォルダが {len(children)} 件（2 件以上のはず）")
         index_text = (root / INDEX).read_text(encoding="utf-8", errors="replace")
-        for s in slugs:
-            problems += check_set(s, f"{s.name}/", s.name)
-            if s.name not in index_text:
-                problems.append(f"{INDEX} に {s.name} へのリンクが無い")
+        for target in re.findall(r"\]\(([^)\s]+)\)", index_text):
+            if target.startswith(("http://", "https://", "#")):
+                continue
+            if not (root / target).exists():
+                problems.append(f"{INDEX} のリンク先が無い: {target}")
+        for c in children:
+            problems += name_problems(c.name, dated=False)
+            problems += check_set(c, f"{c.name}/", c.name)
+            if c.name not in index_text:
+                problems.append(f"{INDEX} に {c.name} へのリンクが無い")
         for e in entries:
             if e.is_file() and e.name != INDEX:
-                problems.append(f"直下に {e.name} がある（置いてよいのは {INDEX} だけ）")
+                problems.append(f"直下に {e.name} がある（置いてよいのは {INDEX} と子のフォルダだけ）")
     else:  # 1 件
-        problems += check_set(root, "", None)
-        for e in entries:
-            if e.name in ("explained", WORK):
-                continue
-            if e.is_file() and e.name.endswith((f"{SLIDE_SUFFIX}.md", f"{SLIDE_SUFFIX}.html")):
-                continue
-            problems.append(f"直下に {e.name}{'/' if e.is_dir() else ''} がある（置いてよいのは explained/・"
-                            f"<名前>{SLIDE_SUFFIX}.md/.html・{WORK}/ だけ）")
+        body = root.name.split("_", 1)[1] if DATED_RE.match(root.name) else root.name
+        problems += check_set(root, "", body)
     return problems
 
 

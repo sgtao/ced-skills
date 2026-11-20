@@ -25,15 +25,16 @@ URL・PDF・Word／Excel／PowerPoint・YouTube の動画から、**解説メモ
 ```
 入力（URL・PDF・動画など）
       ↓  /ced-skills:explain
-出力（出力先のフォルダ。例：./explain-out/<入力の名前>/）
-  ├── explained/           解説メモ 5 つ
-  │     README.md／01_source.md／02_explanation_memo.md／11_question_and_answer.md／12_LLM_prompts_as_guide.md
-  ├── <名前>-slides.md     解説スライド（編集用）
-  ├── <名前>-slides.html   解説スライド（ブラウザで開く）
+出力（今いるフォルダの直下に作る。例：./261118_claude-code-plugin-guide/）
+  ├── README.md／01_source.md／02_explanation_memo.md／11_question_and_answer.md／12_LLM_prompts_as_guide.md
+  │                        解説メモ 5 つ（直下に置く）
+  ├── docs/
+  │   ├── <名前>-slides.md     解説スライド（編集用）
+  │   └── <名前>-slides.html   解説スライド（ブラウザで開く）
   └── .work/               変換した Markdown などの中間ファイル（使わなくてよい）
 ```
 
-出力の形は、いつも同じです（解説メモは必ず `explained/` に入ります）。`<名前>` は、入力のファイル名（拡張子なし）や YouTube の動画 ID です。終わりの報告に、作ったファイルのパスが出ます。入力を 2 件以上まとめて渡したときの形は、`00_index.md`（一覧）と、入力ごとのフォルダになります。
+フォルダ名は `YYMMDD_<名前>` です（日付は資料の作成日や公開日の代わりに、今は実行した日。`<名前>` は英小文字・数字・`-` で、40 文字以内）。候補は 3 つから、最初の質問で選びます。`<名前>`（スライドの名前）は日付を除いた部分です。終わりの報告に、作ったファイルのパスが出ます。入力を 2 件以上まとめて渡したときは、`YYMMDD_<名前>/` の中に `00_index.md`（一覧）と、入力ごとのフォルダ（1 件のときと同じ形）ができます。
 
 | 出力 | 中身 |
 |---|---|
@@ -197,7 +198,7 @@ bash scripts/install.sh --target copilot --scope user --uninstall         # ced-
 
 | 聞かれること | 既定の答え |
 |---|---|
-| 出力先のフォルダ | `./explain-out/<入力の名前>` |
+| フォルダ名 | 候補の 1 つ目（`YYMMDD_<名前>`） |
 | スライドの枚数 | 6 枚 |
 | 読み手 | 初めて読む人 |
 | 入力の確認（未完了が 2 件以上、または参照元が 2 つあるとき） | 全件（上限の 5 件を超えるときは先頭 5 件だけ） |
@@ -211,12 +212,13 @@ bash scripts/install.sh --target copilot --scope user --uninstall         # ced-
 答えを最初から渡すと、質問は出ません。
 
 ```
-/ced-skills:explain ./report.pdf --out ./explain-out --slides 8 --audience 実務で使う人
+/ced-skills:explain ./report.pdf --name report-guide --slides 8 --audience 実務で使う人
 ```
 
 | 指定 | 意味 |
 |---|---|
-| `--out <フォルダ>` | 出力先 |
+| `--name <フォルダ名>` | 出力のフォルダ名（`YYMMDD_` を除いた名前。例：`report-guide`） |
+| `--out <親フォルダ>` | フォルダを作る場所（既定は今いるフォルダ） |
 | `--slides <枚数>` | スライドの枚数 |
 | `--audience <読み手>` | 読み手の想定（例：`初めて読む人`／`実務で使う人`／`専門家`） |
 
@@ -225,7 +227,7 @@ bash scripts/install.sh --target copilot --scope user --uninstall         # ced-
 ### 3. 使うときの注意
 
 - YouTube 動画は、字幕（日本語・英語。自動生成を含む）から解説を作ります。字幕が無い動画では、字幕が取れなかった理由が報告されます。その場合は、別の動画に差し替えて、もう一度実行してください。
-- 作業用の中間ファイルは `.work/` と `explained/out/` にまとまっています。解説メモの 5 つとスライドだけを使えば足ります。
+- 作業用の中間ファイルは `.work/` にまとまっています。解説メモの 5 つとスライドだけを使えば足ります。
 - 入力を Markdown にできなかったときは、理由を報告して止まります。
 - スライドの `.md` や `.html` は、同じ名前のものがあると上書きされることがあります。残したいものは、先に別のフォルダへ移してください。
 
