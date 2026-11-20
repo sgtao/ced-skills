@@ -249,7 +249,11 @@ ced-skills/
 ├── docs/instructions.md                総合インストラクションの例（貼り付け用）
 ├── scripts/install.sh                  スキルを、ツールごとの skills フォルダへ直接入れる・外す
 ├── scripts/build_explain_skill.py      explain.md から adapters/ced-explain を生成する
+├── pyproject.toml・uv.lock              開発用の依存（pytest ほか。配布物には入らない）
 └── tests/                              合格条件の検査
+    ├── source/11・source/12            元のリポジトリから移したテスト（フォルダごとに別プロセスで走らせる）
+    ├── run_all.sh                      全テストを走らせる
+    └── check_standalone.sh             元の資料フォルダを置かない場所で、全テストが通ることを確かめる
 ```
 
 ## 既存の同名スキルを外す（重なりを避けるとき）

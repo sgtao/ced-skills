@@ -179,15 +179,6 @@ def test_content_types_cover_three_kinds():
         assert role in t
 
 
-def test_reference_skill_is_untouched():
-    """22_（参考にしたスキル）は変更しない。親のリポジトリの状態を直接は見られないので、
-    ここでは 22_ の SKILL.md が読めて、変更の跡（新スキルの語）が無いことだけを確かめる。"""
-    ref = ROOT.parent / "22_ref-skill-globis-course-deepdive" / "globis-course-deepdive" / "SKILL.md"
-    if not ref.is_file():
-        pytest.skip("22_ が隣に無い")
-    assert "craft-explanation-docs" not in ref.read_text(encoding="utf-8")
-
-
 def test_skill_md_has_no_script_fallback():
     """スクリプトを実行できないとき（P6）の手順が SKILL.md にあり、必要な文書を指している。"""
     t = read("SKILL.md")
