@@ -5,7 +5,10 @@
 検査の側を書き換えない）。項目の定義は references/output-formats.md の「検査項目」。
 
 使い方:
-  python3 check_docs.py <作業フォルダ> [--json] [--only C-1,C-6]
+  python3 check_docs.py <作業フォルダ> [--out-dir <out の場所>] [--json] [--only C-1,C-6]
+
+out/ の場所は既定で <作業フォルダ>/out。explain は中間の out/ を .work/out/ へ移すので、
+そのときは --out-dir <作業フォルダ>/.work/out を渡す。
 """
 from __future__ import annotations
 
@@ -27,7 +30,8 @@ FINAL_FILES = [
     "11_question_and_answer.md",
     "12_LLM_prompts_as_guide.md",
 ]
-MANIFEST = "out/00_manifest.json"
+MANIFEST_NAME = "00_manifest.json"
+MANIFEST = "out/00_manifest.json"  # 既定の場所（作業フォルダの out/）。assemble.py も使う
 NAV1 = "###### [toTopPage](./README.md)"
 NAV2 = "###### [toREADME](./README.md)"
 SEP = ("-----", "[toTop](#totoppage)")
@@ -79,23 +83,27 @@ def F(file, line, message):
 class Ctx:
     """作業フォルダの最終ファイルを読み込んだもの。無いファイルは None。"""
 
-    def __init__(self, root: str):
+    def __init__(self, root: str, out_dir: str | None = None):
         self.root = os.path.abspath(root)
         self.texts: dict[str, str | None] = {}
         for name in FINAL_FILES:
             p = os.path.join(self.root, name)
             self.texts[name] = read_text(p) if os.path.isfile(p) else None
+        # out/ の場所（既定は作業フォルダの out/）。表示には作業フォルダからの相対の形を使う
+        self.out_dir = os.path.abspath(out_dir) if out_dir else os.path.join(self.root, "out")
+        mp = os.path.join(self.out_dir, MANIFEST_NAME)
+        rel = os.path.relpath(mp, self.root)
+        self.manifest_label = rel.replace(os.sep, "/") if not rel.startswith("..") else mp
         self.manifest = None
         self.manifest_error = None
-        mp = os.path.join(self.root, MANIFEST)
         if not os.path.isfile(mp):
-            self.manifest_error = f"{MANIFEST} が無い"
+            self.manifest_error = f"{self.manifest_label} が無い"
         else:
             try:
                 with open(mp, encoding="utf-8") as f:
                     self.manifest = json.load(f)
             except (OSError, ValueError) as e:
-                self.manifest_error = f"{MANIFEST} を読めない: {e}"
+                self.manifest_error = f"{self.manifest_label} を読めない: {e}"
 
     def present(self):
         return [n for n in FINAL_FILES if self.texts[n] is not None]
@@ -165,7 +173,7 @@ def c1(ctx: Ctx):
         if ctx.texts[n] is None:
             out.append(F(n, None, "ファイルが無い"))
     if ctx.manifest_error:
-        out.append(F(MANIFEST, None, ctx.manifest_error))
+        out.append(F(ctx.manifest_label, None, ctx.manifest_error))
     return out
 
 
@@ -576,7 +584,7 @@ def c9(ctx: Ctx):
             want = ctx.manifest.get("body_sha256")
             got = sha256_text(normalize_body(body))
             if not want:
-                out.append(F(MANIFEST, None, "body_sha256 が無い"))
+                out.append(F(ctx.manifest_label, None, "body_sha256 が無い"))
             elif got != want:
                 out.append(F("01_source.md", mark, "本文が入力の複製と違う（ハッシュが manifest と一致しない）"))
     # スキルが作っていない節（利用者が足した節）が前後で同じか
@@ -728,9 +736,10 @@ CHECKS = {"C-1": c1, "C-2": c2, "C-3": c3, "C-4": c4, "C-5": c5, "C-6": c6,
           "C-7": c7, "C-8": c8, "C-9": c9, "C-10": c10, "C-11": c11, "C-12": c12}
 
 
-def run_checks(root: str, only=None) -> dict:
-    """検査を実行し、{"schema", "folder", "passed", "summary", "items": [...]} を返す。"""
-    ctx = Ctx(root)
+def run_checks(root: str, only=None, out_dir: str | None = None) -> dict:
+    """検査を実行し、{"schema", "folder", "passed", "summary", "items": [...]} を返す。
+    out_dir は out/ の場所（無ければ作業フォルダの out/）。"""
+    ctx = Ctx(root, out_dir)
     items = []
     for cid, name in ITEMS:
         if only and cid not in only:
@@ -766,7 +775,9 @@ def main() -> None:
             "\n"
             "入力:\n"
             "  <folder>  作業フォルダ（README.md・01_source.md・02_explanation_memo.md・\n"
-            "            11_question_and_answer.md・12_LLM_prompts_as_guide.md・out/00_manifest.json）\n"
+            "            11_question_and_answer.md・12_LLM_prompts_as_guide.md）\n"
+            "  --out-dir  out/ の場所（既定は <folder>/out。explain は .work/out を渡す）。\n"
+            "            その中の 00_manifest.json を C-1・C-9 が読む\n"
             "検査項目: C-1 必須ファイル／C-2 見出し／C-3 out/ への参照／C-4 プレースホルダ／\n"
             "          C-5 相対リンク／C-6 文字数／C-7 セクションの網羅／C-8 引用の照合／\n"
             "          C-9 入力の保全／C-10 項目の一致／C-11 相互リンクと要約／C-12 総括の視点\n"
@@ -780,6 +791,8 @@ def main() -> None:
     ap.add_argument("--json", action="store_true", help="結果を JSON で出す")
     ap.add_argument("--only", default=None, metavar="C-1,C-6",
                     help="指定した項目だけ検査する（カンマ区切り）")
+    ap.add_argument("--out-dir", default=None, metavar="DIR",
+                    help="out/ の場所（既定は <folder>/out。explain は <folder>/.work/out を渡す）")
     args = ap.parse_args()
 
     if not os.path.isdir(args.folder):
@@ -792,7 +805,7 @@ def main() -> None:
         if unknown:
             ap.error(f"知らない項目: {', '.join(sorted(unknown))}（C-1〜C-11）")
 
-    result = run_checks(args.folder, only)
+    result = run_checks(args.folder, only, args.out_dir)
     if args.json:
         sys.stdout.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     else:

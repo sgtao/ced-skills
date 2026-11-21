@@ -4,9 +4,11 @@
 
 ## 機械の検査（`check_docs.py`）：落ちたときの直し方
 
+C-1 と C-9 が読む manifest の場所は `check_docs.py` の `--out-dir`（既定は `<作業フォルダ>/out`。explain は out/ を `.work/out` へ移すので、`--out-dir <作業フォルダ>/.work/out` を付ける）。
+
 | 項目 | 落ちる理由の例 | 直し方（直すのは `out/` の元のファイル） |
 |---|---|---|
-| C-1 必須ファイル | 5 本か manifest が無い | `scaffold.py`（取り込み）か `assemble.py` をやり直す |
+| C-1 必須ファイル | 5 本か manifest が無い | `scaffold.py`（取り込み）か `assemble.py` をやり直す（manifest の場所は下の注を見る） |
 | C-2 見出し | `##`・`###` の名前・順序・個数が違う | 元の `out/` の見出しを、`output-formats.md` の書式に合わせる |
 | C-3 `out/` への参照 | 解説の本文に「out/…を参照」と書いた | その文を消す（最終ファイルだけで読めるようにする） |
 | C-4 プレースホルダ | `{{…}}`・`TODO` が残る。取り込みの `{{summary}}` などの埋め忘れ | 埋める。残すべき文字なら言い換える |

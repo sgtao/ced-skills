@@ -90,7 +90,10 @@ def main() -> int:
     else:
         docs_folder = docs[0]
         report["criteria"]["7_docs_folder"] = True
-        r = subprocess.run([sys.executable, str(CHECK_DOCS), str(docs_folder), "--json"],
+        # explain は out/ を .work/out/ へ移すので、その場所を渡す（無ければ既定の out/）
+        out_dir = docs_folder / ".work" / "out"
+        extra = ["--out-dir", str(out_dir)] if out_dir.is_dir() else []
+        r = subprocess.run([sys.executable, str(CHECK_DOCS), str(docs_folder), *extra, "--json"],
                            capture_output=True, text=True)
         report["details"]["check_docs_exit"] = r.returncode
         report["criteria"]["7_check_docs"] = r.returncode == 0

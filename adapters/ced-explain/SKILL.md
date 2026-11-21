@@ -94,7 +94,7 @@ description: フォルダ・ファイル・ZIP・URL から、解説メモと解
 - 子スキルが作る中間の `out/` は、完了後に `<作業フォルダ>/.work/out/` へ移す（直下に置かない）。
 - 作業フォルダが既にあるとき: 直下に `README.md` と `01_source.md` があれば、そのフォルダをそのまま渡す（`DEST_EXISTS` にしない。再開）。それ以外の不完全なものは消さずに `<親>/.work/incomplete/<スラッグ>-<番号>/` へ移してから作り直す。
 - 子スキルの Q6（同名フォルダの確認）には進ませない。出力先の判定は実行の前に済んでいるので、作業フォルダが既にあっても、上の再開か `.work/incomplete/` への移動で扱い、`DEST_EXISTS` の質問を出させない。
-- 検査（`check_docs.py`）に合格したら `mark --status docs_done`。失敗したら `mark --status failed --reason CHECK_FAILED` として記録し、その 1 件は飛ばして、残りを続ける。
+- 検査（`check_docs.py`）は `--out-dir <作業フォルダ>/.work/out` を付けて走らせる（out/ を移したあとなので、既定の `<作業フォルダ>/out` は無い）。合格したら `mark --status docs_done`。失敗したら `mark --status failed --reason CHECK_FAILED` として記録し、その 1 件は飛ばして、残りを続ける。
 
 ### 4. 解説スライドを作る（1 件ずつ）
 - `ced-websearch-slide-ja` のスキルを使い、解説メモをもとにスライド MD を書く。

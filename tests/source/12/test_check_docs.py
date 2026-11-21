@@ -383,3 +383,57 @@ def test_c4_does_not_check_verbatim_input_copy(golden):
     """01_source.md は入力の複製なので、入力にある {{ や TODO は残りものではない（C-4 の対象外）。"""
     edit(golden, "01_source.md", "# ", "TODO: 入力の一部\n{{ name }}\n# ")
     assert [f for f in findings(golden, "C-4") if f["file"] == "01_source.md"] == []
+
+
+# ---- out/ の場所（既定は作業フォルダの out/。--out-dir で別の場所を指せる）-------------
+def move_out_to_work(d):
+    """explain の手順どおり、out/ を .work/out/ へ移す。"""
+    (d / ".work").mkdir()
+    shutil.move(str(d / "out"), str(d / ".work" / "out"))
+
+
+def test_default_out_dir_passes_with_out_in_place(golden):
+    assert run_checks(str(golden))["passed"] is True
+
+
+def test_moved_out_fails_by_default(golden):
+    move_out_to_work(golden)
+    assert failed_ids(golden) == ["C-1"]
+
+
+def test_out_dir_option_reads_moved_out(golden):
+    move_out_to_work(golden)
+    r = run_checks(str(golden), out_dir=str(golden / ".work" / "out"))
+    assert r["passed"] is True, r
+
+
+def test_out_dir_missing_manifest_names_that_folder(golden):
+    move_out_to_work(golden)
+    (golden / "out").mkdir()  # 既定の out/ は空（manifest が無い）
+    msgs = [f["message"] for f in next(i for i in run_checks(str(golden))["items"] if i["id"] == "C-1")["findings"]]
+    assert any("out/00_manifest.json" in m for m in msgs), msgs
+    r = run_checks(str(golden / "nothing-here"), out_dir=str(golden / ".work" / "out"))
+    assert r["passed"] is False
+
+
+def test_out_dir_wrong_path_reports_the_given_path(golden):
+    move_out_to_work(golden)
+    wrong = golden / ".work" / "missing"
+    r = run_checks(str(golden), out_dir=str(wrong))
+    c1 = next(i for i in r["items"] if i["id"] == "C-1")
+    assert c1["status"] == "FAIL"
+    assert any("missing" in f["message"] for f in c1["findings"]), c1
+
+
+def test_cli_out_dir_option(golden):
+    move_out_to_work(golden)
+    p = run_script("check_docs.py", golden)
+    assert p.returncode == 1 and "FAIL  C-1" in p.stdout
+    p = run_script("check_docs.py", golden, "--out-dir", golden / ".work" / "out")
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert "結果: 12 PASS / 0 FAIL" in p.stdout
+
+
+def test_cli_help_mentions_out_dir():
+    p = run_script("check_docs.py", "--help")
+    assert "--out-dir" in p.stdout

@@ -9,6 +9,7 @@
    ```bash
    <RUN> <SKILL_DIR>/scripts/check_docs.py <作業フォルダ>
    ```
+   out/ を `.work/out/` へ移してあるときは、`--out-dir <作業フォルダ>/.work/out` を付ける。
    機械で読みたいときは `--json`。出力の `FAIL` の項目と場所（ファイル・行）を読む。
 2. **読み合わせ**（R-1〜R-4）: `references/self-review.md` の観点で、`01_source.md` と突き合わせる。見つけた問題は、場所と直し方を 1 行ずつ書き出す。
 3. **直す**: 不合格の項目と、読み合わせで見つけた問題を、**元の `out/` のファイルで直す**（最終ファイルを直接直さない。二重管理を避ける）。直したら `assemble.py` をやり直し（`workflows/assemble.md`）、1 に戻る。
