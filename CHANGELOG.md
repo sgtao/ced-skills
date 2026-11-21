@@ -3,9 +3,10 @@
 ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履歴です。版は `plugins/.claude-plugin/plugin.json` の `version` と、Git のタグに合わせます。
 
 ---
-## [Unreleased]（0.0.3 に入れる。版の見出しは V3-M5 で付ける）
+## [0.0.3] - 2026-11-21
 
 ### 追加
+- **E2E の集計**：`tests/e2e_check.py` が 2 件以上の出力を、子のフォルダごとに 7・8 で確かめる（`<子の名前>/<基準>`）。子が 2 件未満なら `7_units` で不合格
 - **出力フォルダの名前**：`ced_name.py`（`ced-url-to-md`）が、`YYMMDD_<英小文字・数字・->`（`_` の後ろは 40 文字以内）の候補を 3 つ作る。同じ入力の既存フォルダは `--resume` で先頭の候補にする（再実行で `-2` にならない）
 - **題と日付**：`collect_sources.py plan` が、出力フォルダ名の材料（`title`・`date`・`date_source`・`head`）と、再開できる既存のフォルダ（`resumable`）を返す。日付は、YouTube・Web の公開日、PDF・Office の作成日、Markdown の `published` など。取れなければ実行した日
 - **`collect_sources.py fetch`**：Web ページ・YouTube を、今いるフォルダの `01_sources/YYMMDD_<名前>.md` に取得する。同じ URL は通信せずに同じファイルを返す
@@ -15,6 +16,8 @@ ced-skills（Claude Code のプラグインと、スキル 4 つ）の変更履�
 - **実行前の環境確認**：`/ced-skills:explain` が、最初に `python3 --version` で版を確かめ、3.10 未満や依存が無いときは `uv run --python 3.12` で動かす
 
 ### 変更
+- **来歴**：0.0.2 までは元のリポジトリ（11・12・13）から `sync_skills.py` で複製していた。0.0.3 からは `plugins/ced-*` を直接直す。同期の仕組み（`sync_skills.py`・`sources.lock.json`・`run_source_tests.sh`）は消し、テストは `tests/source/` に移した
+- **`check_docs.py` の `--out-dir`**：out/ の場所を指定できる（既定は作業フォルダの `out/`）。`explain` は移した `.work/out/` を渡す
 - **出力の形**（互換なし）：今いるフォルダの直下の `YYMMDD_<名前>/`（解説メモは直下、スライドは `docs/`）。`explain-out/` と `explained/` はやめた
 - **`ced-craft-explanation-docs` を単独で使ったときの既定の作業フォルダ**：入力の隣の `<名前>_explained/` から、今いるフォルダの直下の `YYMMDD_<名前>/`（スライドは直下の `docs/`）に変えた。理由：`/ced-skills:explain` の形と揃えるため（`--dest` を渡せば、これまでどおり好きな場所に作れる）
 

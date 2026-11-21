@@ -1,6 +1,6 @@
 [project]
 name = "ced-skills"
-version = "0.0.2"
+version = "0.0.3"
 description = "explain 系のスキル（ced-*）の開発用の依存とテスト。配布物は plugins/ で、この pyproject は配らない"
 requires-python = ">=3.10"
 # 元のリポジトリ 11（url-to-md・pdf-to-md-ja）の依存を、そのまま引き継ぐ。

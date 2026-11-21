@@ -11,7 +11,7 @@
       "name": "ced-skills",
       "source": "./plugins",
       "description": "任意のドキュメント・情報から、解説メモと解説スライドを作る",
-      "version": "0.0.2"
+      "version": "0.0.3"
     }
   ]
 }
