@@ -268,7 +268,7 @@ ced-skills/
 
 ## 開発の仕方
 
-このリポジトリが、スキルの唯一の正です。直すときは `plugins/ced-*/` を直接直します（元のリポジトリ 11・12・13 は DEPRECATED で、もう使いません）。
+このリポジトリが、スキルの唯一の正です。直すときは `plugins/ced-*/` を直接直します。元のリポジトリ（11・12・13）の中身は、ここに移しました。以後の変更はこのリポジトリで行います。
 
 - **直す場所**：`plugins/ced-*/`（スキル）、`plugins/commands/explain.md`（総合インストラクション。`adapters/ced-explain/SKILL.md` は `python3 scripts/build_explain_skill.py` で作り直す。手で直さない）
 - **テストの走らせ方**：`bash tests/run_all.sh`。元のテスト（`tests/source/11`・`tests/source/12`）は、フォルダごとに別プロセスで走る（同じ名前のモジュールを使うため）。依存は `pyproject.toml`・`uv.lock`（`uv` で実行。配布物には入らない）
@@ -291,7 +291,9 @@ ced-skills/
 | README に、古い字幕の注意が無く、入力の種類・対応表・構成が載っている | `python3 tests/check_readme.py` |
 | 出力の形（見本 2 つが合格、不合格の見本 3 つが不合格） | `python3 tests/test_check_output_layout.py` |
 | 実際の出力の形 | `python3 tests/check_output_layout.py <出力フォルダ>` |
-| E2E（HTML・PDF・YouTube の出力）の検査（形も含む） | `python3 tests/e2e_check.py <出力フォルダ>` |
+| E2E の検査（解説メモ・スライド・lint・形。2 件以上の出力は子のフォルダごと） | `python3 tests/e2e_check.py <出力フォルダ>` |
+| E2E の集計（1 件・2 件以上・子の不合格・lint の warn） | `uv run --python 3.12 pytest tests/test_e2e_check.py` |
+| 解説メモの検査 C-1〜C-12（`--out-dir` を含む） | `uv run --python 3.12 pytest tests/source/12/test_check_docs.py` |
 
 入力の前処理（`collect_sources.py`）の検査は `tests/source/11/test_collect_sources.py` にあります。E2E は `claude -p` を使う有料の処理です。記録は `tests/e2e-record/` にあります。
 
@@ -299,7 +301,7 @@ ced-skills/
 
 | ツール | 呼び方 | ユーザー単位の配置先（`--target`） | 配置を検査済み | 実機で確認済み |
 |---|---|---|---|---|
-| Claude Code | `/ced-skills:explain` | `~/.claude/skills`（プラグインで入れる） | ✓（プラグインの検査と `install.sh` のテスト） | 未検証（v0.0.2 の H1〜H5 で確かめる） |
+| Claude Code | `/ced-skills:explain` | `~/.claude/skills`（プラグインで入れる） | ✓（プラグインの検査と `install.sh` のテスト） | 未検証（v0.0.3 の H2〜H5 で確かめる） |
 | Codex | `$ced-explain` | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
 | Copilot CLI | `/ced-explain`（`/skills reload` のあと） | `~/.copilot/skills`（`--target copilot`） | ✓（`install.sh` のテスト） | 未検証（H6） |
 | Gemini CLI | 説明文の依頼で選ばれる（新しいセッションか `/skills reload` のあと） | `~/.agents/skills`（`--target agents`） | ✓（`install.sh` のテスト） | 未検証（H6） |
